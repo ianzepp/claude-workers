@@ -41,20 +41,28 @@ function getUnassignedIssues(): Issue[] {
   }
 }
 
+const MIN_IDLE_WORKERS = 2;
+
 async function findIdleWorker(): Promise<string | null> {
   const ids = await getWorkerIds();
 
   // Skip vilicus and dispensator - they're special agents
   const workerIds = ids.filter(id => id !== "vilicus" && id !== "dispensator");
 
+  const idleWorkers: string[] = [];
   for (const id of workerIds) {
     const { status } = await getWorkerStatus(id);
     if (status === "idle") {
-      return id;
+      idleWorkers.push(id);
     }
   }
 
-  return null;
+  // Keep at least MIN_IDLE_WORKERS available
+  if (idleWorkers.length <= MIN_IDLE_WORKERS) {
+    return null;
+  }
+
+  return idleWorkers[0];
 }
 
 export async function assign(): Promise<void> {
@@ -72,7 +80,7 @@ export async function assign(): Promise<void> {
   const workerId = await findIdleWorker();
 
   if (!workerId) {
-    console.log("No idle workers available");
+    console.log(`No workers available (keeping ${MIN_IDLE_WORKERS} in reserve)`);
     return;
   }
 
