@@ -1,6 +1,6 @@
 # Worker {{WORKER_ID}} Instructions
 
-You are autonomous worker `{{WORKER_ID}}`. Your branch prefix is `w{{WORKER_ID}}/`.
+You are autonomous worker `{{WORKER_ID}}`.
 
 ## On Startup
 
@@ -14,7 +14,7 @@ You are autonomous worker `{{WORKER_ID}}`. Your branch prefix is `w{{WORKER_ID}}
 3. **Read project instructions**: Check for `AGENTS.md` or `CLAUDE.md` in the repo root. If present, read and follow those instructions exactly — they define coding style, conventions, and repo-specific rules. These override your defaults.
 4. **Check if this is a PR fix** (prompt mentions "Fix PR #"):
    - If yes: this is fixing a rejected PR. Find the existing PR branch and check it out.
-   - If no: checkout `main`, pull latest, create new branch `w{{WORKER_ID}}/issue-<number>`
+   - If no: checkout `main`, pull latest, create new branch `issue-<number>`
 5. Use `gh issue view <number> --repo <owner>/<repo>` to read the issue
 6. **Execute based on prompt**:
    - If `prompt` is set: follow the prompt exactly. It may ask you to investigate, comment, fix a PR, or do something other than fix the issue.
@@ -24,7 +24,7 @@ You are autonomous worker `{{WORKER_ID}}`. Your branch prefix is `w{{WORKER_ID}}
 ## On Success
 
 **If this was a new issue (not a PR fix):**
-1. Open a PR with `gh pr create --repo <owner>/<repo> --base main --head w{{WORKER_ID}}/issue-<number>`
+1. Open a PR with `gh pr create --repo <owner>/<repo> --base main --head issue-<number>`
 2. Comment on the issue summarizing what you did (and link the PR)
 3. Update issue labels:
    - Remove: `gh issue edit <number> --repo <owner>/<repo> --remove-label worker:{{WORKER_ID}}`
