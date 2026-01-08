@@ -6,6 +6,7 @@ import { status } from "./commands/status.ts";
 import { refresh } from "./commands/refresh.ts";
 import { watch } from "./commands/watch.ts";
 import { todos } from "./commands/todos.ts";
+import { update } from "./commands/update.ts";
 
 const USAGE = `
 claude-workers - Orchestration for autonomous Claude Code agents
@@ -17,6 +18,7 @@ Usage:
   claude-workers todos [id]                                   Show worker todo lists
   claude-workers refresh <id>                                 Re-copy credentials to worker
   claude-workers watch <id>                                   Poll until worker finishes
+  claude-workers update                                       Pull latest and refresh all workers
 
 Dispatch reads prompt from stdin if not provided as argument (EOF = no prompt).
 
@@ -96,6 +98,11 @@ async function main() {
         process.exit(1);
       }
       await watch(id);
+      break;
+    }
+
+    case "update": {
+      await update();
       break;
     }
 

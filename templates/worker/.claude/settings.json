@@ -1,13 +1,14 @@
 {
   "sandbox": {
-    "enabled": true,
-    "autoAllowBashIfSandboxed": true,
-    "network": {
-      "allowedDomains": ["*.com", "*.io", "*.dev"]
-    }
+    "enabled": true
   },
   "permissions": {
-    "allow": ["Edit"],
+    "allow": [
+      "Edit",
+      "WebFetch(domain:*.com)",
+      "WebFetch(domain:*.io)",
+      "WebFetch(domain:*.dev)"
+    ],
     "defaultMode": "bypassPermissions"
   }
 }

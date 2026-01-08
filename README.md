@@ -83,6 +83,7 @@ claude-workers status [id]                                  # Show worker status
 claude-workers todos [id]                                   # Show worker todo lists
 claude-workers refresh <id>                                 # Re-copy credentials and templates
 claude-workers watch <id>                                   # Poll until worker finishes
+claude-workers update                                       # Pull latest and refresh all workers
 ```
 
 ### Dispatch
