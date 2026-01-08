@@ -1,0 +1,13 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "network": {
+      "allowedDomains": ["*.com", "*.io", "*.dev"]
+    }
+  },
+  "permissions": {
+    "allow": ["Edit"],
+    "defaultMode": "bypassPermissions"
+  }
+}

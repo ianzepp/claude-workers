@@ -1,0 +1,16 @@
+{
+  "name": "claude-workers",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "claude-workers": "./bin/claude-workers"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "bun build src/cli.ts --outfile bin/claude-workers --target bun"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  }
+}
