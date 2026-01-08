@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { init } from "./commands/init.ts";
-import { dispatch } from "./commands/dispatch.ts";
+import { dispatch, findIdleWorker } from "./commands/dispatch.ts";
 import { restart } from "./commands/restart.ts";
 import { status } from "./commands/status.ts";
 import { inspect } from "./commands/inspect.ts";
@@ -18,7 +18,7 @@ claude-workers - Orchestration for autonomous Claude Code agents
 
 Usage:
   claude-workers init <id>                                    Create worker from template
-  claude-workers dispatch <id> <owner/repo> [issue#] [prompt] Assign task and spawn worker
+  claude-workers dispatch [id] <owner/repo> [issue#] [prompt] Assign task and spawn worker
   claude-workers restart <id>                                 Restart crashed worker
   claude-workers status [id]                                  Show worker status
   claude-workers inspect <id> [lines]                         Show recent conversation activity
@@ -61,22 +61,54 @@ async function main() {
     }
 
     case "dispatch": {
-      const [id, repo, thirdArg, ...rest] = args;
-      if (!id || !repo) {
-        console.error("Error: worker id and repo required");
-        console.error("Usage: claude-workers dispatch <id> <owner/repo> [issue#] [prompt]");
+      const [first, second, thirdArg, ...rest] = args;
+      if (!first) {
+        console.error("Error: repo required");
+        console.error("Usage: claude-workers dispatch [id] <owner/repo> [issue#] [prompt]");
         process.exit(1);
       }
-      // If third arg is a number, it's an issue. Otherwise it's the start of the prompt.
+
+      // Detect if first arg is repo (contains /) or worker id
+      let id: string;
+      let repo: string;
+      let issueArg: string | undefined;
+      let promptRest: string[];
+
+      if (first.includes("/")) {
+        // No worker ID provided, auto-select
+        const foundId = await findIdleWorker();
+        if (!foundId) {
+          console.error("Error: no idle workers available");
+          process.exit(1);
+        }
+        id = foundId;
+        repo = first;
+        issueArg = second;
+        promptRest = thirdArg ? [thirdArg, ...rest] : rest;
+      }
+      else {
+        // Worker ID provided
+        if (!second) {
+          console.error("Error: repo required");
+          console.error("Usage: claude-workers dispatch [id] <owner/repo> [issue#] [prompt]");
+          process.exit(1);
+        }
+        id = first;
+        repo = second;
+        issueArg = thirdArg;
+        promptRest = rest;
+      }
+
+      // Parse issue number
       let issue: number | undefined;
       let promptParts: string[];
-      if (thirdArg && !isNaN(parseInt(thirdArg, 10))) {
-        issue = parseInt(thirdArg, 10);
-        promptParts = rest;
+      if (issueArg && !isNaN(parseInt(issueArg, 10))) {
+        issue = parseInt(issueArg, 10);
+        promptParts = promptRest;
       }
       else {
         issue = undefined;
-        promptParts = thirdArg ? [thirdArg, ...rest] : rest;
+        promptParts = issueArg ? [issueArg, ...promptRest] : promptRest;
       }
       const prompt = promptParts.length > 0 ? promptParts.join(" ") : undefined;
       await dispatch(id, repo, issue, prompt);

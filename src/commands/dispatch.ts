@@ -1,11 +1,25 @@
 import { spawn, spawnSync } from "child_process";
 import { readdir, open } from "fs/promises";
 import { join } from "path";
-import { workerHome, workerTaskPath } from "../lib/paths.ts";
-import { readTask, writeTask, isProcessRunning } from "../lib/task.ts";
+import { workerHome, workerTaskPath, getWorkerIds } from "../lib/paths.ts";
+import { readTask, writeTask, isProcessRunning, getWorkerStatus } from "../lib/task.ts";
 
 export function workerLabel(id: string): string {
   return `worker:${id}`;
+}
+
+export async function findIdleWorker(): Promise<string | null> {
+  const ids = await getWorkerIds();
+  const workerIds = ids.filter(id => id !== "vilicus" && id !== "dispensator");
+
+  for (const id of workerIds) {
+    const { status } = await getWorkerStatus(id);
+    if (status === "idle") {
+      return id;
+    }
+  }
+
+  return null;
 }
 
 async function readStdin(): Promise<string> {
