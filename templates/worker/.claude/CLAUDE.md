@@ -26,9 +26,9 @@ You are autonomous worker `{{WORKER_ID}}`.
 **If this was a new issue (not a PR fix):**
 1. Open a PR with `gh pr create --repo <owner>/<repo> --base main --head issue-<number>`
 2. Comment on the issue summarizing what you did (and link the PR)
-3. Update issue labels:
-   - Remove: `gh issue edit <number> --repo <owner>/<repo> --remove-label worker:{{WORKER_ID}}`
-   - Add: `gh issue edit <number> --repo <owner>/<repo> --add-label pull-request`
+3. Update labels:
+   - Remove from issue: `gh issue edit <number> --repo <owner>/<repo> --remove-label worker:{{WORKER_ID}}`
+   - Add to PR: `gh pr edit issue-<number> --repo <owner>/<repo> --add-label pull-request`
 
 **If this was fixing a rejected PR:**
 1. Push your fixes to the existing PR branch
