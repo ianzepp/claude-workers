@@ -12,7 +12,6 @@ interface PullRequest {
   number: number;
   repository: { nameWithOwner: string };
   title: string;
-  headRefName: string;
 }
 
 interface ReviewedCache {
@@ -43,7 +42,7 @@ function getPendingPRs(): PullRequest[] {
     "search", "prs",
     "--label", "pull-request",
     "--state", "open",
-    "--json", "number,repository,title,headRefName",
+    "--json", "number,repository,title",
   ], { encoding: "utf-8" });
 
   if (result.status !== 0) {
@@ -104,7 +103,6 @@ export async function poll(): Promise<void> {
 
   console.log(`Dispatching vilicus to review: ${prKey}`);
   console.log(`  Title: ${pr.title}`);
-  console.log(`  Branch: ${pr.headRefName}`);
 
   // Mark as being reviewed (to prevent double-dispatch)
   cache[prKey] = { reviewedAt: new Date().toISOString() };
