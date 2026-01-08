@@ -4,6 +4,7 @@ import { init } from "./commands/init.ts";
 import { dispatch } from "./commands/dispatch.ts";
 import { restart } from "./commands/restart.ts";
 import { status } from "./commands/status.ts";
+import { inspect } from "./commands/inspect.ts";
 import { refresh } from "./commands/refresh.ts";
 import { watch } from "./commands/watch.ts";
 import { todos } from "./commands/todos.ts";
@@ -19,6 +20,7 @@ Usage:
   claude-workers dispatch <id> <owner/repo> [issue#] [prompt] Assign task and spawn worker
   claude-workers restart <id>                                 Restart crashed worker
   claude-workers status [id]                                  Show worker status
+  claude-workers inspect <id> [lines]                         Show recent conversation activity
   claude-workers todos [id]                                   Show worker todo lists
   claude-workers refresh <id>                                 Re-copy credentials to worker
   claude-workers watch <id>                                   Poll until worker finishes
@@ -93,6 +95,18 @@ async function main() {
     case "status": {
       const [id] = args;
       await status(id);
+      break;
+    }
+
+    case "inspect": {
+      const [id, linesArg] = args;
+      if (!id) {
+        console.error("Error: worker id required");
+        console.error("Usage: claude-workers inspect <id> [lines]");
+        process.exit(1);
+      }
+      const lines = linesArg ? parseInt(linesArg, 10) : 30;
+      await inspect(id, lines);
       break;
     }
 
