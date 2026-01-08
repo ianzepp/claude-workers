@@ -50,11 +50,17 @@ export async function init(id: string): Promise<void> {
 
   // Process .zshenv template
   const ghToken = process.env.GH_TOKEN;
+  const oauthToken = process.env.CLAUDE_CODE_OAUTH_TOKEN;
   if (!ghToken) {
     console.warn("  Warning: GH_TOKEN not set in environment — worker won't have gh access");
   }
+  if (!oauthToken) {
+    console.warn("  Warning: CLAUDE_CODE_OAUTH_TOKEN not set in environment — worker won't have Claude access");
+  }
   const zshenvTemplate = await readFile(join(templateDir, ".zshenv"), "utf-8");
-  const zshenv = zshenvTemplate.replace(/\{\{GH_TOKEN\}\}/g, ghToken ?? "");
+  const zshenv = zshenvTemplate
+    .replace(/\{\{GH_TOKEN\}\}/g, ghToken ?? "")
+    .replace(/\{\{CLAUDE_CODE_OAUTH_TOKEN\}\}/g, oauthToken ?? "");
   await writeFile(join(home, ".zshenv"), zshenv);
   console.log("  Created .zshenv");
 
@@ -63,5 +69,4 @@ export async function init(id: string): Promise<void> {
 
   console.log(`Worker ${id} initialized`);
   console.log(`  Home: ${home}`);
-  console.log(`  Branch prefix: w${id}/`);
 }

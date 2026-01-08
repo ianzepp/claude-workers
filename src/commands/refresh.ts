@@ -4,7 +4,15 @@ import { homedir } from "os";
 import { existsSync } from "fs";
 import { workerHome } from "../lib/paths.ts";
 
-const TEMPLATE_DIR = join(dirname(dirname(import.meta.path)), "templates", "worker");
+const TEMPLATES_ROOT = join(dirname(dirname(import.meta.path)), "templates");
+
+function getTemplateDir(id: string): string {
+  const specialTemplate = join(TEMPLATES_ROOT, id);
+  if (existsSync(specialTemplate)) {
+    return specialTemplate;
+  }
+  return join(TEMPLATES_ROOT, "worker");
+}
 
 const CREDENTIALS = [
   ".gitconfig",
@@ -42,14 +50,21 @@ export async function copyCredentials(id: string): Promise<void> {
 
 async function refreshZshenv(id: string): Promise<void> {
   const home = workerHome(id);
+  const templateDir = getTemplateDir(id);
   const ghToken = process.env.GH_TOKEN;
+  const oauthToken = process.env.CLAUDE_CODE_OAUTH_TOKEN;
 
   if (!ghToken) {
     console.warn("  Warning: GH_TOKEN not set in environment");
   }
+  if (!oauthToken) {
+    console.warn("  Warning: CLAUDE_CODE_OAUTH_TOKEN not set in environment");
+  }
 
-  const zshenvTemplate = await readFile(join(TEMPLATE_DIR, ".zshenv"), "utf-8");
-  const zshenv = zshenvTemplate.replace(/\{\{GH_TOKEN\}\}/g, ghToken ?? "");
+  const zshenvTemplate = await readFile(join(templateDir, ".zshenv"), "utf-8");
+  const zshenv = zshenvTemplate
+    .replace(/\{\{GH_TOKEN\}\}/g, ghToken ?? "")
+    .replace(/\{\{CLAUDE_CODE_OAUTH_TOKEN\}\}/g, oauthToken ?? "");
   await writeFile(join(home, ".zshenv"), zshenv);
   console.log("  Refreshed .zshenv");
 }
@@ -57,13 +72,14 @@ async function refreshZshenv(id: string): Promise<void> {
 async function refreshClaudeMd(id: string): Promise<void> {
   const home = workerHome(id);
   const claudeDir = join(home, ".claude");
+  const templateDir = getTemplateDir(id);
 
-  const claudeMdTemplate = await readFile(join(TEMPLATE_DIR, ".claude", "CLAUDE.md"), "utf-8");
+  const claudeMdTemplate = await readFile(join(templateDir, ".claude", "CLAUDE.md"), "utf-8");
   const claudeMd = claudeMdTemplate.replace(/\{\{WORKER_ID\}\}/g, id);
   await writeFile(join(claudeDir, "CLAUDE.md"), claudeMd);
   console.log("  Refreshed CLAUDE.md");
 
-  const settingsJson = await readFile(join(TEMPLATE_DIR, ".claude", "settings.json"), "utf-8");
+  const settingsJson = await readFile(join(templateDir, ".claude", "settings.json"), "utf-8");
   await writeFile(join(claudeDir, "settings.json"), settingsJson);
   console.log("  Refreshed settings.json");
 }
