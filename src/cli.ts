@@ -18,7 +18,7 @@ claude-workers - Orchestration for autonomous Claude Code agents
 
 Usage:
   claude-workers init <id>                                    Create worker from template
-  claude-workers dispatch [id] <owner/repo> [issue#] [prompt] Assign task and spawn worker
+  claude-workers dispatch -r <repo> [-i issue] [-w worker] [-p prompt]
   claude-workers restart <id>                                 Restart crashed worker
   claude-workers status [id]                                  Show worker status
   claude-workers inspect <id> [lines]                         Show recent conversation activity
@@ -61,56 +61,54 @@ async function main() {
     }
 
     case "dispatch": {
-      const [first, second, thirdArg, ...rest] = args;
-      if (!first) {
+      // Parse flags
+      let repo: string | undefined;
+      let issue: number | undefined;
+      let workerId: string | undefined;
+      let prompt: string | undefined;
+
+      for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        const next = args[i + 1];
+
+        if ((arg === "-r" || arg === "--repo") && next) {
+          repo = next;
+          i++;
+        }
+        else if ((arg === "-i" || arg === "--issue") && next) {
+          issue = parseInt(next, 10);
+          i++;
+        }
+        else if ((arg === "-w" || arg === "--worker") && next) {
+          workerId = next;
+          i++;
+        }
+        else if ((arg === "-p" || arg === "--prompt") && next) {
+          prompt = next;
+          i++;
+        }
+      }
+
+      if (!repo) {
         console.error("Error: repo required");
-        console.error("Usage: claude-workers dispatch [id] <owner/repo> [issue#] [prompt]");
+        console.error("Usage: claude-workers dispatch -r <repo> [-i issue] [-w worker] [-p prompt]");
         process.exit(1);
       }
 
-      // Detect if first arg is repo (contains /) or worker id
+      // Auto-select worker if not provided
       let id: string;
-      let repo: string;
-      let issueArg: string | undefined;
-      let promptRest: string[];
-
-      if (first.includes("/")) {
-        // No worker ID provided, auto-select
+      if (workerId) {
+        id = workerId;
+      }
+      else {
         const foundId = await findIdleWorker();
         if (!foundId) {
           console.error("Error: no idle workers available");
           process.exit(1);
         }
         id = foundId;
-        repo = first;
-        issueArg = second;
-        promptRest = thirdArg ? [thirdArg, ...rest] : rest;
-      }
-      else {
-        // Worker ID provided
-        if (!second) {
-          console.error("Error: repo required");
-          console.error("Usage: claude-workers dispatch [id] <owner/repo> [issue#] [prompt]");
-          process.exit(1);
-        }
-        id = first;
-        repo = second;
-        issueArg = thirdArg;
-        promptRest = rest;
       }
 
-      // Parse issue number
-      let issue: number | undefined;
-      let promptParts: string[];
-      if (issueArg && !isNaN(parseInt(issueArg, 10))) {
-        issue = parseInt(issueArg, 10);
-        promptParts = promptRest;
-      }
-      else {
-        issue = undefined;
-        promptParts = issueArg ? [issueArg, ...promptRest] : promptRest;
-      }
-      const prompt = promptParts.length > 0 ? promptParts.join(" ") : undefined;
       await dispatch(id, repo, issue, prompt);
       break;
     }

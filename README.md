@@ -82,7 +82,7 @@ Worker `settings.json`:
 
 ```bash
 claude-workers init <id>                                    # Create worker from template
-claude-workers dispatch [id] <owner/repo> [issue#] [prompt] # Assign task (auto-selects worker)
+claude-workers dispatch -r <repo> [-i issue] [-w worker] [-p prompt]
 claude-workers restart <id>                                 # Restart crashed worker
 claude-workers status [id]                                  # Show worker status
 claude-workers inspect <id> [lines]                         # Show recent conversation activity
@@ -106,17 +106,17 @@ claude-workers assign                                       # Assign unassigned 
 The orchestrating Claude (or human) moves on; the PR appears eventually.
 
 ```bash
-# Fix an issue
-claude-workers dispatch 01 ianzepp/faber-romanus 22
+# Fix an issue (auto-selects idle worker)
+claude-workers dispatch -r ianzepp/faber-romanus -i 22
 
-# Custom prompt with issue
-claude-workers dispatch 01 ianzepp/faber-romanus 22 "Investigate and comment, don't fix"
+# Specify worker
+claude-workers dispatch -r ianzepp/faber-romanus -i 22 -w 01
 
-# Task without issue (prompt only)
-claude-workers dispatch 01 ianzepp/faber-romanus "Clone and set up the repo"
+# Custom prompt
+claude-workers dispatch -r ianzepp/faber-romanus -i 22 -p "Investigate and comment, don't fix"
 
-# Prompt from stdin
-echo "Review for security issues" | claude-workers dispatch 01 ianzepp/faber-romanus 22
+# Task without issue
+claude-workers dispatch -r ianzepp/faber-romanus -p "Clone and set up the repo"
 ```
 
 ### Watch
@@ -392,8 +392,8 @@ claude-workers init 02
 claude-workers init vilicus
 
 # Dispatch tasks
-claude-workers dispatch 01 myorg/myrepo 42
-claude-workers dispatch 02 myorg/myrepo 43
+claude-workers dispatch -r myorg/myrepo -i 42
+claude-workers dispatch -r myorg/myrepo -i 43
 
 # Monitor
 claude-workers status
