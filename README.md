@@ -83,6 +83,7 @@ Worker `settings.json`:
 ```bash
 claude-workers init <id>                                    # Create worker from template
 claude-workers dispatch <id> <owner/repo> [issue#] [prompt] # Assign task and spawn worker
+claude-workers restart <id>                                 # Restart crashed worker
 claude-workers status [id]                                  # Show worker status
 claude-workers todos [id]                                   # Show worker todo lists
 claude-workers history [id]                                 # Show completed tasks

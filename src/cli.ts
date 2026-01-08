@@ -2,6 +2,7 @@
 
 import { init } from "./commands/init.ts";
 import { dispatch } from "./commands/dispatch.ts";
+import { restart } from "./commands/restart.ts";
 import { status } from "./commands/status.ts";
 import { refresh } from "./commands/refresh.ts";
 import { watch } from "./commands/watch.ts";
@@ -16,6 +17,7 @@ claude-workers - Orchestration for autonomous Claude Code agents
 Usage:
   claude-workers init <id>                                    Create worker from template
   claude-workers dispatch <id> <owner/repo> [issue#] [prompt] Assign task and spawn worker
+  claude-workers restart <id>                                 Restart crashed worker
   claude-workers status [id]                                  Show worker status
   claude-workers todos [id]                                   Show worker todo lists
   claude-workers refresh <id>                                 Re-copy credentials to worker
@@ -74,6 +76,17 @@ async function main() {
       }
       const prompt = promptParts.length > 0 ? promptParts.join(" ") : undefined;
       await dispatch(id, repo, issue, prompt);
+      break;
+    }
+
+    case "restart": {
+      const [id] = args;
+      if (!id) {
+        console.error("Error: worker id required");
+        console.error("Usage: claude-workers restart <id>");
+        process.exit(1);
+      }
+      await restart(id);
       break;
     }
 
