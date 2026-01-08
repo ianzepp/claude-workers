@@ -85,6 +85,7 @@ claude-workers init <id>                                    # Create worker from
 claude-workers dispatch <id> <owner/repo> [issue#] [prompt] # Assign task and spawn worker
 claude-workers restart <id>                                 # Restart crashed worker
 claude-workers status [id]                                  # Show worker status
+claude-workers inspect <id> [lines]                         # Show recent conversation activity
 claude-workers todos [id]                                   # Show worker todo lists
 claude-workers history [id]                                 # Show completed tasks
 claude-workers refresh <id>                                 # Re-copy credentials and templates
