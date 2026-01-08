@@ -21,7 +21,7 @@ async function getLatestTodos(workerId: string): Promise<Todo[]> {
       files.map(async (f) => {
         const path = join(todosDir, f);
         const stat = await Bun.file(path).stat();
-        return { name: f, mtime: stat?.mtime ?? 0, path };
+        return { name: f, mtime: stat?.mtime?.getTime() ?? 0, path };
       })
     );
 
