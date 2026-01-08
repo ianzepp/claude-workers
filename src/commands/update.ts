@@ -1,10 +1,14 @@
-import { readdir } from "fs/promises";
+import { readdir, realpath } from "fs/promises";
 import { spawnSync } from "child_process";
 import { dirname, join } from "path";
 import { WORKERS_ROOT } from "../lib/paths.ts";
 import { refresh } from "./refresh.ts";
 
-const REPO_ROOT = join(dirname(dirname(import.meta.path)), "..");
+async function getRepoRoot(): Promise<string> {
+  // Follow symlink to find actual binary location, then go up from bin/
+  const realBinaryPath = await realpath(process.argv[1]);
+  return dirname(dirname(realBinaryPath));
+}
 
 async function listWorkers(): Promise<string[]> {
   try {
@@ -20,12 +24,13 @@ async function listWorkers(): Promise<string[]> {
 }
 
 export async function update(): Promise<void> {
+  const repoRoot = await getRepoRoot();
   console.log(`Updating claude-workers from git...\n`);
 
   // Git pull
   console.log("  git pull");
   const pullResult = spawnSync("git", ["pull"], {
-    cwd: REPO_ROOT,
+    cwd: repoRoot,
     stdio: "inherit",
   });
 
@@ -37,7 +42,7 @@ export async function update(): Promise<void> {
   // Rebuild
   console.log("\n  bun run build");
   const buildResult = spawnSync("bun", ["run", "build"], {
-    cwd: REPO_ROOT,
+    cwd: repoRoot,
     stdio: "inherit",
   });
 
