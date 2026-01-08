@@ -16,7 +16,7 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString().trim();
 }
 
-export async function dispatch(id: string, repo: string, issue: number, prompt?: string): Promise<void> {
+export async function dispatch(id: string, repo: string, issue?: number, prompt?: string): Promise<void> {
   const home = workerHome(id);
 
   // Verify worker exists
@@ -35,13 +35,13 @@ export async function dispatch(id: string, repo: string, issue: number, prompt?:
     if (existingTask.pid && isProcessRunning(existingTask.pid)) {
       console.error(`Error: worker ${id} is busy`);
       console.error(`  Repo: ${existingTask.repo}`);
-      console.error(`  Issue: ${existingTask.issue}`);
+      if (existingTask.issue) console.error(`  Issue: ${existingTask.issue}`);
       console.error(`  PID: ${existingTask.pid}`);
       process.exit(1);
     }
     // Stale task - warn but proceed
     console.warn(`Warning: worker ${id} has stale task from crashed run`);
-    console.warn(`  Previous: ${existingTask.repo}#${existingTask.issue}`);
+    console.warn(`  Previous: ${existingTask.repo}${existingTask.issue ? "#" + existingTask.issue : ""}`);
     console.warn(`  Overwriting with new assignment`);
   }
 
@@ -62,27 +62,31 @@ export async function dispatch(id: string, repo: string, issue: number, prompt?:
 
   console.log(`Dispatching worker ${id}`);
   console.log(`  Repo: ${repo}`);
-  console.log(`  Issue: #${issue}`);
+  if (issue) {
+    console.log(`  Issue: #${issue}`);
+  }
   if (taskPrompt) {
     console.log(`  Prompt: ${taskPrompt.length > 60 ? taskPrompt.slice(0, 60) + "..." : taskPrompt}`);
   }
 
-  // Ensure labels exist
-  const label = workerLabel(id);
-  spawnSync("gh", ["label", "create", label, "--repo", repo, "--color", "0E8A16", "--force"], {
-    encoding: "utf-8",
-  });
-  spawnSync("gh", ["label", "create", "pull-request", "--repo", repo, "--color", "1D76DB", "--force"], {
-    encoding: "utf-8",
-  });
-  const labelResult = spawnSync("gh", ["issue", "edit", String(issue), "--repo", repo, "--add-label", label], {
-    encoding: "utf-8",
-  });
-  if (labelResult.status !== 0) {
-    console.warn(`  Warning: failed to add label: ${labelResult.stderr?.trim() || "unknown error"}`);
-  }
-  else {
-    console.log(`  Added label: ${label}`);
+  // Add labels only if there's an issue
+  if (issue) {
+    const label = workerLabel(id);
+    spawnSync("gh", ["label", "create", label, "--repo", repo, "--color", "0E8A16", "--force"], {
+      encoding: "utf-8",
+    });
+    spawnSync("gh", ["label", "create", "pull-request", "--repo", repo, "--color", "1D76DB", "--force"], {
+      encoding: "utf-8",
+    });
+    const labelResult = spawnSync("gh", ["issue", "edit", String(issue), "--repo", repo, "--add-label", label], {
+      encoding: "utf-8",
+    });
+    if (labelResult.status !== 0) {
+      console.warn(`  Warning: failed to add label: ${labelResult.stderr?.trim() || "unknown error"}`);
+    }
+    else {
+      console.log(`  Added label: ${label}`);
+    }
   }
 
   // Spawn claude in background with worker's HOME

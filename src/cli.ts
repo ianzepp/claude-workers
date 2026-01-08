@@ -14,7 +14,7 @@ claude-workers - Orchestration for autonomous Claude Code agents
 
 Usage:
   claude-workers init <id>                                    Create worker from template
-  claude-workers dispatch <id> <owner/repo> <issue#> [prompt] Assign task and spawn worker
+  claude-workers dispatch <id> <owner/repo> [issue#] [prompt] Assign task and spawn worker
   claude-workers status [id]                                  Show worker status
   claude-workers todos [id]                                   Show worker todo lists
   claude-workers refresh <id>                                 Re-copy credentials to worker
@@ -53,16 +53,22 @@ async function main() {
     }
 
     case "dispatch": {
-      const [id, repo, issueStr, ...promptParts] = args;
-      if (!id || !repo || !issueStr) {
-        console.error("Error: worker id, repo, and issue number required");
-        console.error("Usage: claude-workers dispatch <id> <owner/repo> <issue#> [prompt]");
+      const [id, repo, thirdArg, ...rest] = args;
+      if (!id || !repo) {
+        console.error("Error: worker id and repo required");
+        console.error("Usage: claude-workers dispatch <id> <owner/repo> [issue#] [prompt]");
         process.exit(1);
       }
-      const issue = parseInt(issueStr, 10);
-      if (isNaN(issue)) {
-        console.error(`Error: invalid issue number: ${issueStr}`);
-        process.exit(1);
+      // If third arg is a number, it's an issue. Otherwise it's the start of the prompt.
+      let issue: number | undefined;
+      let promptParts: string[];
+      if (thirdArg && !isNaN(parseInt(thirdArg, 10))) {
+        issue = parseInt(thirdArg, 10);
+        promptParts = rest;
+      }
+      else {
+        issue = undefined;
+        promptParts = thirdArg ? [thirdArg, ...rest] : rest;
       }
       const prompt = promptParts.length > 0 ? promptParts.join(" ") : undefined;
       await dispatch(id, repo, issue, prompt);

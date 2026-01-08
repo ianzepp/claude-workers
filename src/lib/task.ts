@@ -3,7 +3,7 @@ import { workerTaskPath } from "./paths.ts";
 
 export interface Task {
   repo: string;
-  issue: number;
+  issue?: number;
   prompt?: string;
   pid?: number;
   startedAt?: string;

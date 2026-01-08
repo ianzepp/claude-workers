@@ -89,7 +89,7 @@ function formatStatus(info: WorkerInfo): string {
   let line = `${info.id}: ${color}${info.status}${reset}`;
 
   if (info.repo) {
-    line += ` - ${info.repo}#${info.issue}`;
+    line += ` - ${info.repo}${info.issue ? "#" + info.issue : ""}`;
   }
   if (info.pid) {
     line += ` (PID ${info.pid})`;
