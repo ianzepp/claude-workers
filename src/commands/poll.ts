@@ -1,39 +1,11 @@
 import { spawnSync } from "child_process";
-import { readFile, writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { homedir } from "os";
 import { getWorkerStatus } from "../lib/task.ts";
 import { dispatch } from "./dispatch.ts";
-
-const CACHE_DIR = join(homedir(), ".cache", "claude-workers");
-const REVIEWED_CACHE = join(CACHE_DIR, "reviewed.json");
 
 interface PullRequest {
   number: number;
   repository: { nameWithOwner: string };
   title: string;
-}
-
-interface ReviewedCache {
-  [prKey: string]: {
-    reviewedAt: string;
-    outcome?: string;
-  };
-}
-
-async function loadCache(): Promise<ReviewedCache> {
-  try {
-    const content = await readFile(REVIEWED_CACHE, "utf-8");
-    return JSON.parse(content);
-  }
-  catch {
-    return {};
-  }
-}
-
-async function saveCache(cache: ReviewedCache): Promise<void> {
-  await mkdir(CACHE_DIR, { recursive: true });
-  await writeFile(REVIEWED_CACHE, JSON.stringify(cache, null, 2) + "\n");
 }
 
 function getPendingPRs(): PullRequest[] {
@@ -73,7 +45,7 @@ export async function poll(): Promise<void> {
     return;
   }
 
-  // Get pending PRs
+  // Get pending PRs (those with pull-request label)
   const prs = getPendingPRs();
 
   if (prs.length === 0) {
@@ -81,33 +53,14 @@ export async function poll(): Promise<void> {
     return;
   }
 
-  // Load review cache
-  const cache = await loadCache();
-
-  // Find PRs not yet reviewed
-  const unreviewedPRs = prs.filter((pr) => {
-    const key = `${pr.repository.nameWithOwner}#${pr.number}`;
-    return !cache[key];
-  });
-
-  if (unreviewedPRs.length === 0) {
-    console.log(`${prs.length} PR(s) found, all already reviewed`);
-    return;
-  }
-
-  console.log(`${unreviewedPRs.length} PR(s) pending review`);
-
-  // Review the first unreviewed PR
-  const pr = unreviewedPRs[0];
+  // Review the first pending PR
+  const pr = prs[0];
   const repo = pr.repository.nameWithOwner;
   const prKey = `${repo}#${pr.number}`;
 
+  console.log(`${prs.length} PR(s) pending review`);
   console.log(`Dispatching vilicus to review: ${prKey}`);
   console.log(`  Title: ${pr.title}`);
-
-  // Mark as being reviewed (to prevent double-dispatch)
-  cache[prKey] = { reviewedAt: new Date().toISOString() };
-  await saveCache(cache);
 
   // Dispatch vilicus - use PR number as "issue" field
   await dispatch("vilicus", repo, pr.number, `Review PR #${pr.number}: ${pr.title}`);
