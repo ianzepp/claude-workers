@@ -118,6 +118,19 @@ echo "Review for security issues" | claude-workers dispatch 01 ianzepp/faber-rom
 claude-workers watch 01 &
 ```
 
+### Update
+
+`update` pulls the latest claude-workers from git, rebuilds, and refreshes all workers with updated templates:
+
+```bash
+claude-workers update
+```
+
+This is useful after upstream changes to worker templates (CLAUDE.md, settings.json) or CLI fixes. The command:
+1. Runs `git pull` in the claude-workers repo
+2. Runs `bun run build` to rebuild the CLI
+3. Runs `refresh` on every worker to apply template updates
+
 ## Task Lifecycle
 
 1. **Dispatch**: CLI writes `~/workers/NN/task.json` and labels issue with `worker:NN`
