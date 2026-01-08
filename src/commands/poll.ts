@@ -37,11 +37,12 @@ async function saveCache(cache: ReviewedCache): Promise<void> {
 }
 
 function getPendingPRs(): PullRequest[] {
-  // Search for open PRs with pull-request label
+  // Search for open PRs with pull-request label in user's repos
   const result = spawnSync("gh", [
     "search", "prs",
     "--label", "pull-request",
     "--state", "open",
+    "--owner", "@me",
     "--json", "number,repository,title",
   ], { encoding: "utf-8" });
 
