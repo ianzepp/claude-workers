@@ -11,6 +11,7 @@ import { todos } from "./commands/todos.ts";
 import { update } from "./commands/update.ts";
 import { history } from "./commands/history.ts";
 import { poll } from "./commands/poll.ts";
+import { assign } from "./commands/assign.ts";
 
 const USAGE = `
 claude-workers - Orchestration for autonomous Claude Code agents
@@ -27,6 +28,7 @@ Usage:
   claude-workers update                                       Pull latest and refresh all workers
   claude-workers history [id]                                 Show completed tasks
   claude-workers poll                                         Check for PRs and dispatch vilicus
+  claude-workers assign                                       Assign unassigned issues to idle workers
 
 Dispatch reads prompt from stdin if not provided as argument (EOF = no prompt).
 
@@ -151,6 +153,11 @@ async function main() {
 
     case "poll": {
       await poll();
+      break;
+    }
+
+    case "assign": {
+      await assign();
       break;
     }
 

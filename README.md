@@ -92,6 +92,7 @@ claude-workers refresh <id>                                 # Re-copy credential
 claude-workers watch <id>                                   # Poll until worker finishes
 claude-workers update                                       # Pull latest and refresh all workers
 claude-workers poll                                         # Check for PRs and dispatch vilicus
+claude-workers assign                                       # Assign unassigned issues to idle workers
 ```
 
 ### Dispatch
@@ -151,6 +152,17 @@ claude-workers history 01     # Specific worker
 claude-workers poll           # Run once
 */5 * * * * cw poll           # Cron every 5 mins
 ```
+
+### Assign
+
+`assign` (dispensator) finds unassigned issues and dispatches idle workers:
+
+```bash
+claude-workers assign         # Run once
+*/5 * * * * cw assign         # Cron every 5 mins
+```
+
+Issues are skipped if they have `worker:*`, `pull-request`, or `blocked` labels.
 
 ## Vilicus — Automated PR Review
 
