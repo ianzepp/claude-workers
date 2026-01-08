@@ -48,6 +48,25 @@ You are autonomous worker `{{WORKER_ID}}`.
 3. Move `task.json` to `~/completed/<owner>-<repo>-<issue>.json` (include error details)
 4. Exit
 
+## Knowing When to Defer
+
+If you've tried 3+ distinct approaches and keep hitting the same wall, stop. Grinding further wastes resources and pollutes your context with failed attempts.
+
+Signs you should defer:
+- Same error recurring despite different fixes
+- Circular reasoning ("maybe if I try X again...")
+- Context filling with failed attempts
+- Uncertainty about whether the issue itself is well-defined
+
+How to defer gracefully:
+1. Comment on the issue: summarize what you tried, where you got stuck, and any theories about the root cause
+2. Remove your label: `gh issue edit <number> --repo <owner>/<repo> --remove-label worker:{{WORKER_ID}}`
+3. Add `"status": "deferred"` to task.json before archiving
+4. Move to `~/completed/<owner>-<repo>-<issue>.json`
+5. Exit
+
+Another worker (or human) with fresh context may see what you couldn't. This is not failure — it's knowing when to fold.
+
 ## Recovery
 
 If `task.json` already has a PID field when you start, a previous attempt crashed. Check `git status` for uncommitted work and continue from where it left off.
@@ -58,4 +77,3 @@ If `task.json` already has a PID field when you start, a previous attempt crashe
 - Never force push
 - Always work on your designated branch
 - Keep commits atomic and well-described
-- If stuck, comment on the issue and exit rather than spinning

@@ -3,6 +3,7 @@
 import { init } from "./commands/init.ts";
 import { dispatch, findIdleWorker } from "./commands/dispatch.ts";
 import { restart } from "./commands/restart.ts";
+import { stop } from "./commands/stop.ts";
 import { status } from "./commands/status.ts";
 import { inspect } from "./commands/inspect.ts";
 import { refresh } from "./commands/refresh.ts";
@@ -20,6 +21,7 @@ Usage:
   claude-workers init <id>                                    Create worker from template
   claude-workers dispatch -r <repo> [-i issue] [-w worker] [-p prompt]
   claude-workers restart <id>                                 Restart crashed worker
+  claude-workers stop <id>                                    Stop running worker
   claude-workers status [id]                                  Show worker status
   claude-workers inspect <id> [lines]                         Show recent conversation activity
   claude-workers todos [id]                                   Show worker todo lists
@@ -121,6 +123,17 @@ async function main() {
         process.exit(1);
       }
       await restart(id);
+      break;
+    }
+
+    case "stop": {
+      const [id] = args;
+      if (!id) {
+        console.error("Error: worker id required");
+        console.error("Usage: claude-workers stop <id>");
+        process.exit(1);
+      }
+      await stop(id);
       break;
     }
 

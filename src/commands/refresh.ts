@@ -2,6 +2,7 @@ import { cp, rm, readFile, writeFile } from "fs/promises";
 import { join, dirname } from "path";
 import { homedir } from "os";
 import { existsSync } from "fs";
+import { spawnSync } from "child_process";
 import { workerHome } from "../lib/paths.ts";
 
 const TEMPLATES_ROOT = join(dirname(dirname(import.meta.path)), "templates");
@@ -45,6 +46,18 @@ export async function copyCredentials(id: string): Promise<void> {
     catch (err) {
       console.warn(`  Warning: could not copy ${name}: ${err}`);
     }
+  }
+
+  // Configure git to use gh as credential helper
+  const result = spawnSync("gh", ["auth", "setup-git"], {
+    env: { ...process.env, HOME: home },
+    encoding: "utf-8",
+  });
+  if (result.status === 0) {
+    console.log("  Configured git credential helper for gh");
+  }
+  else {
+    console.warn(`  Warning: could not configure git credential helper: ${result.stderr?.trim() || "unknown error"}`);
   }
 }
 

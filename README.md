@@ -84,6 +84,7 @@ Worker `settings.json`:
 claude-workers init <id>                                    # Create worker from template
 claude-workers dispatch -r <repo> [-i issue] [-w worker] [-p prompt]
 claude-workers restart <id>                                 # Restart crashed worker
+claude-workers stop <id>                                    # Stop running worker
 claude-workers status [id]                                  # Show worker status
 claude-workers inspect <id> [lines]                         # Show recent conversation activity
 claude-workers todos [id]                                   # Show worker todo lists
