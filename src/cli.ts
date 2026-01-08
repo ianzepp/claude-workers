@@ -8,6 +8,7 @@ import { watch } from "./commands/watch.ts";
 import { todos } from "./commands/todos.ts";
 import { update } from "./commands/update.ts";
 import { history } from "./commands/history.ts";
+import { poll } from "./commands/poll.ts";
 
 const USAGE = `
 claude-workers - Orchestration for autonomous Claude Code agents
@@ -21,6 +22,7 @@ Usage:
   claude-workers watch <id>                                   Poll until worker finishes
   claude-workers update                                       Pull latest and refresh all workers
   claude-workers history [id]                                 Show completed tasks
+  claude-workers poll                                         Check for PRs and dispatch vilicus
 
 Dispatch reads prompt from stdin if not provided as argument (EOF = no prompt).
 
@@ -117,6 +119,11 @@ async function main() {
     case "history": {
       const [id] = args;
       await history(id);
+      break;
+    }
+
+    case "poll": {
+      await poll();
       break;
     }
 

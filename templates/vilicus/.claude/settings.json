@@ -1,0 +1,15 @@
+{
+  "model": "claude-opus-4-5-20250929",
+  "sandbox": {
+    "enabled": true
+  },
+  "permissions": {
+    "allow": [
+      "Edit",
+      "WebFetch(domain:*.com)",
+      "WebFetch(domain:*.io)",
+      "WebFetch(domain:*.dev)"
+    ],
+    "defaultMode": "bypassPermissions"
+  }
+}
