@@ -156,6 +156,111 @@ If a worker crashes mid-task, `task.json` remains with the assignment but a stal
 - All PRs require human review before merge
 - Failed tasks leave `worker:NN` label for visibility
 
+## Remote Workers
+
+Workers can run on a remote VPS for laptop-independent execution. The approach: deploy `claude-workers` on the VPS and execute commands via SSH.
+
+### Why This Works
+
+The dispatch command spawns workers with `detached: true` and `unref()`, making them fully independent of the parent process. Status detection uses filesystem checks (`task.json`) and PID probing (`kill -0`), not parent/child relationships. SSH can disconnect immediately after dispatch—workers keep running.
+
+### VPS Setup
+
+Tested on Ubuntu 24.04 (DigitalOcean droplet, 2GB RAM).
+
+**1. Install Bun:**
+
+```bash
+curl -fsSL https://bun.sh/install | bash
+ln -sf ~/.bun/bin/bun /usr/local/bin/bun
+ln -sf ~/.bun/bin/bunx /usr/local/bin/bunx
+```
+
+**2. Install Node.js** (required by Claude Code CLI):
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+apt-get install -y nodejs
+```
+
+**3. Install GitHub CLI:**
+
+```bash
+apt-get install -y gh
+```
+
+**4. Install Claude Code CLI:**
+
+```bash
+bun install -g @anthropic-ai/claude-code
+ln -sf ~/.bun/bin/claude /usr/local/bin/claude
+```
+
+**5. Configure credentials** in `/root/.profile`:
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+export GH_TOKEN="ghp_..."
+```
+
+**6. Configure git:**
+
+```bash
+git config --global user.name "Claude Worker"
+git config --global user.email "worker@localhost"
+gh auth setup-git  # Uses GH_TOKEN for HTTPS auth
+```
+
+**7. Clone and build claude-workers:**
+
+```bash
+cd ~
+git clone https://github.com/ianzepp/claude-workers.git
+cd claude-workers
+bun install && bun run build
+ln -sf ~/claude-workers/bin/claude-workers /usr/local/bin/claude-workers
+```
+
+**8. Initialize workers:**
+
+```bash
+source ~/.profile  # Load credentials
+claude-workers init 01
+claude-workers init 02
+```
+
+The symlinks to `/usr/local/bin` are important—SSH command execution doesn't source shell profiles, so binaries must be in the default PATH.
+
+### Usage
+
+From your laptop, SSH exec commands directly:
+
+```bash
+ssh root@your-vps "claude-workers dispatch 01 owner/repo 42"
+ssh root@your-vps "claude-workers status"
+ssh root@your-vps "claude-workers todos"
+```
+
+Or create an alias:
+
+```bash
+alias cw='ssh root@your-vps claude-workers'
+cw dispatch 01 owner/repo 42
+cw status
+cw todos 01
+```
+
+### Multiple Hosts
+
+Each VPS is an independent claude-workers host with its own credentials. Use different aliases for different hosts:
+
+```bash
+alias cw-prod='ssh root@prod-vps claude-workers'
+alias cw-dev='ssh root@dev-vps claude-workers'
+```
+
+This allows separate credential sets, different worker pools, or geographic distribution.
+
 ## Project Structure
 
 ```
