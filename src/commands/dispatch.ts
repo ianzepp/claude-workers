@@ -30,7 +30,7 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString().trim();
 }
 
-export async function dispatch(id: string, repo: string, issue?: number, prompt?: string): Promise<void> {
+export async function dispatch(id: string, repo: string, issue?: number, prompt?: string, options?: { silent?: boolean }): Promise<boolean> {
   const home = workerHome(id);
 
   // Verify worker exists
@@ -38,25 +38,31 @@ export async function dispatch(id: string, repo: string, issue?: number, prompt?
     await readdir(home);
   }
   catch {
-    console.error(`Error: worker ${id} does not exist`);
-    console.error(`Run: claude-workers init ${id}`);
-    process.exit(1);
+    if (!options?.silent) {
+      console.error(`Error: worker ${id} does not exist`);
+      console.error(`Run: claude-workers init ${id}`);
+    }
+    return false;
   }
 
   // Check if worker is busy
   const existingTask = await readTask(id);
   if (existingTask) {
     if (existingTask.pid && isProcessRunning(existingTask.pid)) {
-      console.error(`Error: worker ${id} is busy`);
-      console.error(`  Repo: ${existingTask.repo}`);
-      if (existingTask.issue) console.error(`  Issue: ${existingTask.issue}`);
-      console.error(`  PID: ${existingTask.pid}`);
-      process.exit(1);
+      if (!options?.silent) {
+        console.error(`Error: worker ${id} is busy`);
+        console.error(`  Repo: ${existingTask.repo}`);
+        if (existingTask.issue) console.error(`  Issue: ${existingTask.issue}`);
+        console.error(`  PID: ${existingTask.pid}`);
+      }
+      return false;
     }
     // Stale task - warn but proceed
-    console.warn(`Warning: worker ${id} has stale task from crashed run`);
-    console.warn(`  Previous: ${existingTask.repo}${existingTask.issue ? "#" + existingTask.issue : ""}`);
-    console.warn(`  Overwriting with new assignment`);
+    if (!options?.silent) {
+      console.warn(`Warning: worker ${id} has stale task from crashed run`);
+      console.warn(`  Previous: ${existingTask.repo}${existingTask.issue ? "#" + existingTask.issue : ""}`);
+      console.warn(`  Overwriting with new assignment`);
+    }
   }
 
   // Read prompt from stdin if not provided
@@ -65,14 +71,6 @@ export async function dispatch(id: string, repo: string, issue?: number, prompt?
     taskPrompt = await readStdin();
     if (!taskPrompt) taskPrompt = undefined;
   }
-
-  // Write task assignment
-  await writeTask(id, {
-    repo,
-    issue,
-    prompt: taskPrompt,
-    startedAt: new Date().toISOString(),
-  });
 
   console.log(`Dispatching worker ${id}`);
   console.log(`  Repo: ${repo}`);
@@ -119,7 +117,12 @@ export async function dispatch(id: string, repo: string, issue?: number, prompt?
 
   child.unref();
 
-  // Update task.json with PID
+  // Close parent's file descriptor so we don't block on it
+  await logFile.close();
+
+  // Write task.json ONCE, with PID, AFTER spawning
+  // WHY: Writing before spawning creates a race window where another assign
+  // sees a task.json with no PID and treats it as stale
   await writeTask(id, {
     repo,
     issue,
@@ -131,4 +134,6 @@ export async function dispatch(id: string, repo: string, issue?: number, prompt?
   console.log(`  Spawned PID: ${child.pid}`);
   console.log(`  Log: ${logPath}`);
   console.log(`Worker ${id} dispatched. Check task progress with: claude-workers status ${id}`);
+
+  return true;
 }

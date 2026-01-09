@@ -76,20 +76,36 @@ export async function assign(): Promise<void> {
 
   console.log(`${issues.length} unassigned issue(s) found`);
 
-  // Find an idle worker
-  const workerId = await findIdleWorker();
+  // Try to dispatch, with retry if worker becomes busy
+  const MAX_RETRIES = 3;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    // Find an idle worker
+    const workerId = await findIdleWorker();
 
-  if (!workerId) {
-    console.log(`No workers available (keeping ${MIN_IDLE_WORKERS} in reserve)`);
-    return;
+    if (!workerId) {
+      console.log(`No workers available (keeping ${MIN_IDLE_WORKERS} in reserve)`);
+      return;
+    }
+
+    // Dispatch the first issue to the worker
+    const issue = issues[0];
+    const repo = issue.repository.nameWithOwner;
+
+    console.log(`Assigning to worker ${workerId}:`);
+    console.log(`  ${repo}#${issue.number}: ${issue.title}`);
+
+    // Try to dispatch with silent mode (retries if worker became busy)
+    const success = await dispatch(workerId, repo, issue.number, undefined, { silent: attempt > 0 });
+
+    if (success) {
+      return;
+    }
+
+    // Worker became busy between check and dispatch, retry with a different worker
+    if (attempt < MAX_RETRIES - 1) {
+      console.log(`  Worker became busy, retrying...`);
+    }
   }
 
-  // Dispatch the first issue to the worker
-  const issue = issues[0];
-  const repo = issue.repository.nameWithOwner;
-
-  console.log(`Assigning to worker ${workerId}:`);
-  console.log(`  ${repo}#${issue.number}: ${issue.title}`);
-
-  await dispatch(workerId, repo, issue.number);
+  console.error("Failed to assign after multiple retries");
 }

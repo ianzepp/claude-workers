@@ -45,6 +45,9 @@ export async function restart(id: string): Promise<void> {
 
   child.unref();
 
+  // Close parent's file descriptor so we don't block on it
+  await logFile.close();
+
   // Update task.json with new PID (preserve other fields)
   await writeTask(id, {
     ...task,

@@ -111,7 +111,10 @@ async function main() {
         id = foundId;
       }
 
-      await dispatch(id, repo, issue, prompt);
+      const success = await dispatch(id, repo, issue, prompt);
+      if (!success) {
+        process.exit(1);
+      }
       break;
     }
 
