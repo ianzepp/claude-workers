@@ -3,6 +3,7 @@
 import { init } from "./commands/init.ts";
 import { dispatch, findIdleWorker } from "./commands/dispatch.ts";
 import { restart } from "./commands/restart.ts";
+import { reset } from "./commands/reset.ts";
 import { stop } from "./commands/stop.ts";
 import { status } from "./commands/status.ts";
 import { inspect } from "./commands/inspect.ts";
@@ -21,6 +22,7 @@ Usage:
   claude-workers init <id>                                    Create worker from template
   claude-workers dispatch -r <repo> [-i issue] [-w worker] [-p prompt]
   claude-workers restart <id>                                 Restart crashed worker
+  claude-workers reset <id> [--force]                         Clear task and return to idle
   claude-workers stop <id>                                    Stop running worker
   claude-workers status [id]                                  Show worker status
   claude-workers inspect <id> [lines]                         Show recent conversation activity
@@ -124,6 +126,18 @@ async function main() {
         process.exit(1);
       }
       await restart(id);
+      break;
+    }
+
+    case "reset": {
+      const id = args.find((a) => !a.startsWith("-"));
+      const force = args.includes("--force") || args.includes("-f");
+      if (!id) {
+        console.error("Error: worker id required");
+        console.error("Usage: claude-workers reset <id> [--force]");
+        process.exit(1);
+      }
+      await reset(id, { force });
       break;
     }
 
