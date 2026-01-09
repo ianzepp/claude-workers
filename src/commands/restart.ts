@@ -26,13 +26,16 @@ export async function restart(id: string): Promise<void> {
     console.log(`  Issue: #${task.issue}`);
   }
   if (task.prompt) {
-    console.log(`  Prompt: ${task.prompt.length > 60 ? task.prompt.slice(0, 60) + "..." : task.prompt}`);
+    console.log(
+      `  Prompt: ${task.prompt.length > 60 ? task.prompt.slice(0, 60) + "..." : task.prompt}`
+    );
   }
 
   // Spawn claude in background with worker's HOME
   const logPath = join(home, "worker.log");
   const logFile = await open(logPath, "w");
-  const startPrompt = "Read ~/task.json and execute the task following your CLAUDE.md instructions.";
+  const startPrompt =
+    "Read ~/task.json and execute the task following your CLAUDE.md instructions.";
   const child = spawn("claude", ["--print", "--dangerously-skip-permissions", startPrompt], {
     cwd: home,
     env: {

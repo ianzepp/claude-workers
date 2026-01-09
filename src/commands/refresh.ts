@@ -1,25 +1,12 @@
-import { cp, rm, readFile, writeFile } from "fs/promises";
-import { join, dirname } from "path";
-import { homedir } from "os";
-import { existsSync } from "fs";
 import { spawnSync } from "child_process";
-import { workerHome } from "../lib/paths.ts";
+import { existsSync } from "fs";
+import { cp, readFile, rm, writeFile } from "fs/promises";
+import { homedir } from "os";
+import { join } from "path";
 
-const TEMPLATES_ROOT = join(dirname(dirname(import.meta.path)), "templates");
+import { getTemplateDir, workerHome } from "../lib/paths.ts";
 
-function getTemplateDir(id: string): string {
-  const specialTemplate = join(TEMPLATES_ROOT, id);
-  if (existsSync(specialTemplate)) {
-    return specialTemplate;
-  }
-  return join(TEMPLATES_ROOT, "worker");
-}
-
-const CREDENTIALS = [
-  ".gitconfig",
-  ".ssh",
-  ".gh",
-];
+const CREDENTIALS = [".gitconfig", ".ssh", ".gh"];
 
 export async function copyCredentials(id: string): Promise<void> {
   const home = workerHome(id);
@@ -42,8 +29,7 @@ export async function copyCredentials(id: string): Promise<void> {
     try {
       await cp(src, dst, { recursive: true });
       console.log(`  Copied ${name}`);
-    }
-    catch (err) {
+    } catch (err) {
       console.warn(`  Warning: could not copy ${name}: ${err}`);
     }
   }
@@ -55,9 +41,10 @@ export async function copyCredentials(id: string): Promise<void> {
   });
   if (result.status === 0) {
     console.log("  Configured git credential helper for gh");
-  }
-  else {
-    console.warn(`  Warning: could not configure git credential helper: ${result.stderr?.trim() || "unknown error"}`);
+  } else {
+    console.warn(
+      `  Warning: could not configure git credential helper: ${result.stderr?.trim() || "unknown error"}`
+    );
   }
 }
 

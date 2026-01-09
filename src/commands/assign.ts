@@ -10,14 +10,24 @@ interface Issue {
   repository: { nameWithOwner: string };
 }
 
-function getUnassignedIssues(): Issue[] {
-  // Search for open issues in user's repos
-  const result = spawnSync("gh", [
-    "search", "issues",
-    "--state", "open",
-    "--owner", "@me",
-    "--json", "number,title,labels,repository",
-  ], { encoding: "utf-8" });
+function getApprovedIssues(): Issue[] {
+  // Only pick up issues explicitly approved for auto-assignment
+  const result = spawnSync(
+    "gh",
+    [
+      "search",
+      "issues",
+      "--state",
+      "open",
+      "--label",
+      "approved",
+      "--owner",
+      "@me",
+      "--json",
+      "number,title,labels,repository",
+    ],
+    { encoding: "utf-8" }
+  );
 
   if (result.status !== 0) {
     console.error("Error querying issues:", result.stderr);
@@ -27,27 +37,27 @@ function getUnassignedIssues(): Issue[] {
   try {
     const issues = JSON.parse(result.stdout) as Issue[];
 
-    // Filter out issues that have worker:* labels or pull-request label
-    return issues.filter(issue => {
-      const labelNames = issue.labels.map(l => l.name);
-      const hasWorkerLabel = labelNames.some(l => l.startsWith("worker:"));
+    // Filter out issues already assigned to a worker or blocked
+    return issues.filter((issue) => {
+      const labelNames = issue.labels.map((l) => l.name);
+      const hasWorkerLabel = labelNames.some((l) => l.startsWith("worker:"));
       const hasPRLabel = labelNames.includes("pull-request");
       const hasBlockedLabel = labelNames.includes("blocked");
       return !hasWorkerLabel && !hasPRLabel && !hasBlockedLabel;
     });
-  }
-  catch {
+  } catch {
     return [];
   }
 }
 
+// Keep some workers available for manual dispatch - don't auto-assign everything
 const MIN_IDLE_WORKERS = 2;
 
 async function findIdleWorker(): Promise<string | null> {
   const ids = await getWorkerIds();
 
-  // Skip vilicus and dispensator - they're special agents
-  const workerIds = ids.filter(id => id !== "vilicus" && id !== "dispensator");
+  // Skip special-purpose agents that handle specific tasks
+  const workerIds = ids.filter((id) => id !== "vilicus" && id !== "dispensator");
 
   const idleWorkers: string[] = [];
   for (const id of workerIds) {
@@ -66,15 +76,14 @@ async function findIdleWorker(): Promise<string | null> {
 }
 
 export async function assign(): Promise<void> {
-  // Find unassigned issues
-  const issues = getUnassignedIssues();
+  const issues = getApprovedIssues();
 
   if (issues.length === 0) {
-    console.log("No unassigned issues found");
+    console.log("No approved issues found");
     return;
   }
 
-  console.log(`${issues.length} unassigned issue(s) found`);
+  console.log(`${issues.length} approved issue(s) found`);
 
   // Try to dispatch, with retry if worker becomes busy
   const MAX_RETRIES = 3;
@@ -96,7 +105,10 @@ export async function assign(): Promise<void> {
 
     // Try to dispatch with silent mode (retries if worker became busy)
     // RACE FIX: skipStdin prevents hanging when running over SSH (stdin stays open)
-    const success = await dispatch(workerId, repo, issue.number, undefined, { silent: attempt > 0, skipStdin: true });
+    const success = await dispatch(workerId, repo, issue.number, undefined, {
+      silent: attempt > 0,
+      skipStdin: true,
+    });
 
     if (success) {
       return;

@@ -15,8 +15,7 @@ export async function readTask(workerId: string): Promise<Task | null> {
   try {
     const content = await readFile(path, "utf-8");
     return JSON.parse(content) as Task;
-  }
-  catch {
+  } catch {
     return null;
   }
 }
@@ -28,17 +27,19 @@ export async function writeTask(workerId: string, task: Task): Promise<void> {
 
 export function isProcessRunning(pid: number): boolean {
   try {
+    // Signal 0 doesn't kill - just checks if process exists and we have permission
     process.kill(pid, 0);
     return true;
-  }
-  catch {
+  } catch {
     return false;
   }
 }
 
 export type WorkerStatus = "idle" | "busy" | "crashed";
 
-export async function getWorkerStatus(workerId: string): Promise<{ status: WorkerStatus; task: Task | null }> {
+export async function getWorkerStatus(
+  workerId: string
+): Promise<{ status: WorkerStatus; task: Task | null }> {
   const task = await readTask(workerId);
 
   if (!task) {

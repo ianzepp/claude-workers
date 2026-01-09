@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from "fs/promises";
 import { join } from "path";
-import { WORKERS_ROOT, workerCompletedDir } from "../lib/paths.ts";
+
+import { getWorkerIds, workerCompletedDir } from "../lib/paths.ts";
 import type { Task } from "../lib/task.ts";
 
 interface CompletedTask extends Task {
@@ -28,30 +29,15 @@ async function getCompletedTasks(workerId: string): Promise<CompletedTask[]> {
           workerId,
           completedAt: fileStat.mtime,
         });
-      }
-      catch {
+      } catch {
         // Skip malformed files
       }
     }
-  }
-  catch {
+  } catch {
     // No completed directory
   }
 
   return tasks;
-}
-
-async function listWorkers(): Promise<string[]> {
-  try {
-    const entries = await readdir(WORKERS_ROOT, { withFileTypes: true });
-    return entries
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name)
-      .sort();
-  }
-  catch {
-    return [];
-  }
 }
 
 function formatTask(task: CompletedTask): string {
@@ -61,7 +47,7 @@ function formatTask(task: CompletedTask): string {
 }
 
 export async function history(id?: string): Promise<void> {
-  const workerIds = id ? [id] : await listWorkers();
+  const workerIds = id ? [id] : await getWorkerIds();
   const allTasks: CompletedTask[] = [];
 
   for (const workerId of workerIds) {

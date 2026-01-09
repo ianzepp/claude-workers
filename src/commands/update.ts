@@ -1,26 +1,14 @@
-import { readdir, realpath } from "fs/promises";
 import { spawnSync } from "child_process";
-import { dirname, join } from "path";
-import { WORKERS_ROOT } from "../lib/paths.ts";
+import { realpath } from "fs/promises";
+import { dirname } from "path";
+
+import { getWorkerIds } from "../lib/paths.ts";
 import { refresh } from "./refresh.ts";
 
 async function getRepoRoot(): Promise<string> {
   // Follow symlink to find actual binary location, then go up from bin/
   const realBinaryPath = await realpath(process.argv[1]);
   return dirname(dirname(realBinaryPath));
-}
-
-async function listWorkers(): Promise<string[]> {
-  try {
-    const entries = await readdir(WORKERS_ROOT, { withFileTypes: true });
-    return entries
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name)
-      .sort();
-  }
-  catch {
-    return [];
-  }
 }
 
 export async function update(): Promise<void> {
@@ -52,7 +40,7 @@ export async function update(): Promise<void> {
   }
 
   // Refresh all workers
-  const workers = await listWorkers();
+  const workers = await getWorkerIds();
 
   if (workers.length === 0) {
     console.log("\nNo workers to refresh");

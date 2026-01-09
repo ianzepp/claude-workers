@@ -1,6 +1,7 @@
-import { readdir } from "fs/promises";
 import { spawnSync } from "child_process";
-import { WORKERS_ROOT, workerHome } from "../lib/paths.ts";
+import { readdir } from "fs/promises";
+
+import { getWorkerIds, workerHome, WORKERS_ROOT } from "../lib/paths.ts";
 import { getWorkerStatus, type WorkerStatus } from "../lib/task.ts";
 import { workerLabel } from "./dispatch.ts";
 
@@ -23,12 +24,11 @@ interface LabeledIssue {
 function queryLabeledIssues(workerId: string): LabeledIssue[] {
   const label = workerLabel(workerId);
   // Search all repos the user has access to
-  const result = spawnSync("gh", [
-    "search", "issues",
-    "--label", label,
-    "--state", "open",
-    "--json", "repository,number,title",
-  ], { encoding: "utf-8" });
+  const result = spawnSync(
+    "gh",
+    ["search", "issues", "--label", label, "--state", "open", "--json", "repository,number,title"],
+    { encoding: "utf-8" }
+  );
 
   if (result.status !== 0) {
     return [];
@@ -46,8 +46,7 @@ function queryLabeledIssues(workerId: string): LabeledIssue[] {
       title: i.title,
       workerId,
     }));
-  }
-  catch {
+  } catch {
     return [];
   }
 }
@@ -62,19 +61,6 @@ async function getWorkerInfo(id: string): Promise<WorkerInfo> {
     pid: task?.pid,
     startedAt: task?.startedAt,
   };
-}
-
-async function listWorkers(): Promise<string[]> {
-  try {
-    const entries = await readdir(WORKERS_ROOT, { withFileTypes: true });
-    return entries
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name)
-      .sort();
-  }
-  catch {
-    return [];
-  }
 }
 
 function formatStatus(info: WorkerInfo): string {
@@ -108,8 +94,7 @@ export async function status(id?: string): Promise<void> {
     // Single worker status
     try {
       await readdir(workerHome(id));
-    }
-    catch {
+    } catch {
       console.error(`Error: worker ${id} does not exist`);
       process.exit(1);
     }
@@ -123,8 +108,8 @@ export async function status(id?: string): Promise<void> {
 
     // Check for orphaned issues (labeled but worker not working on them)
     const labeledIssues = queryLabeledIssues(id);
-    const orphaned = labeledIssues.filter((li) =>
-      info.status === "idle" || (li.repo !== info.repo || li.number !== info.issue)
+    const orphaned = labeledIssues.filter(
+      (li) => info.status === "idle" || li.repo !== info.repo || li.number !== info.issue
     );
 
     if (orphaned.length > 0) {
@@ -133,10 +118,9 @@ export async function status(id?: string): Promise<void> {
         console.log(`    ${issue.repo}#${issue.number}: ${issue.title}`);
       }
     }
-  }
-  else {
+  } else {
     // All workers
-    const workers = await listWorkers();
+    const workers = await getWorkerIds();
 
     if (workers.length === 0) {
       console.log(`No workers found in ${WORKERS_ROOT}`);
@@ -154,8 +138,8 @@ export async function status(id?: string): Promise<void> {
 
       // Check for orphaned issues
       const labeledIssues = queryLabeledIssues(workerId);
-      const orphaned = labeledIssues.filter((li) =>
-        info.status === "idle" || (li.repo !== info.repo || li.number !== info.issue)
+      const orphaned = labeledIssues.filter(
+        (li) => info.status === "idle" || li.repo !== info.repo || li.number !== info.issue
       );
       orphanedAll.push(...orphaned);
     }
@@ -163,7 +147,9 @@ export async function status(id?: string): Promise<void> {
     if (orphanedAll.length > 0) {
       console.log(`\nOrphaned issues (labeled but worker idle/crashed):`);
       for (const issue of orphanedAll) {
-        console.log(`  ${issue.repo}#${issue.number} (${workerLabel(issue.workerId)}): ${issue.title}`);
+        console.log(
+          `  ${issue.repo}#${issue.number} (${workerLabel(issue.workerId)}): ${issue.title}`
+        );
       }
     }
   }

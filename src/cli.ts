@@ -76,16 +76,13 @@ async function main() {
         if ((arg === "-r" || arg === "--repo") && next) {
           repo = next;
           i++;
-        }
-        else if ((arg === "-i" || arg === "--issue") && next) {
+        } else if ((arg === "-i" || arg === "--issue") && next) {
           issue = parseInt(next, 10);
           i++;
-        }
-        else if ((arg === "-w" || arg === "--worker") && next) {
+        } else if ((arg === "-w" || arg === "--worker") && next) {
           workerId = next;
           i++;
-        }
-        else if ((arg === "-p" || arg === "--prompt") && next) {
+        } else if ((arg === "-p" || arg === "--prompt") && next) {
           prompt = next;
           i++;
         }
@@ -93,7 +90,9 @@ async function main() {
 
       if (!repo) {
         console.error("Error: repo required");
-        console.error("Usage: claude-workers dispatch -r <repo> [-i issue] [-w worker] [-p prompt]");
+        console.error(
+          "Usage: claude-workers dispatch -r <repo> [-i issue] [-w worker] [-p prompt]"
+        );
         process.exit(1);
       }
 
@@ -101,8 +100,7 @@ async function main() {
       let id: string;
       if (workerId) {
         id = workerId;
-      }
-      else {
+      } else {
         const foundId = await findIdleWorker();
         if (!foundId) {
           console.error("Error: no idle workers available");

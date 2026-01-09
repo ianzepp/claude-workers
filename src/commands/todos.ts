@@ -1,6 +1,7 @@
 import { readdir, readFile } from "fs/promises";
 import { join } from "path";
-import { WORKERS_ROOT, workerHome } from "../lib/paths.ts";
+
+import { getWorkerIds, workerHome } from "../lib/paths.ts";
 import { getWorkerStatus } from "../lib/task.ts";
 
 interface Todo {
@@ -35,27 +36,13 @@ async function getLatestTodos(workerId: string): Promise<Todo[]> {
     if (!Array.isArray(todos) || todos.length === 0) return [];
 
     return todos;
-  }
-  catch {
-    return [];
-  }
-}
-
-async function listWorkers(): Promise<string[]> {
-  try {
-    const entries = await readdir(WORKERS_ROOT, { withFileTypes: true });
-    return entries
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name)
-      .sort();
-  }
-  catch {
+  } catch {
     return [];
   }
 }
 
 export async function todos(id?: string): Promise<void> {
-  const workerIds = id ? [id] : await listWorkers();
+  const workerIds = id ? [id] : await getWorkerIds();
 
   if (workerIds.length === 0) {
     console.log("No workers found");
@@ -83,13 +70,11 @@ export async function todos(id?: string): Promise<void> {
 
     if (todos.length === 0) {
       console.log(`  ${dim}(no todos)${reset}`);
-    }
-    else {
+    } else {
       for (const todo of todos) {
-        const icon = todo.status === "completed" ? "✓" :
-                     todo.status === "in_progress" ? "→" : "○";
-        const todoColor = todo.status === "completed" ? dim :
-                          todo.status === "in_progress" ? "\x1b[36m" : "";
+        const icon = todo.status === "completed" ? "✓" : todo.status === "in_progress" ? "→" : "○";
+        const todoColor =
+          todo.status === "completed" ? dim : todo.status === "in_progress" ? "\x1b[36m" : "";
         console.log(`  ${todoColor}${icon} ${todo.content}${reset}`);
       }
     }

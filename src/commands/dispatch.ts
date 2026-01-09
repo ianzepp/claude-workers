@@ -1,8 +1,9 @@
 import { spawn, spawnSync } from "child_process";
-import { readdir, open } from "fs/promises";
+import { open, readdir } from "fs/promises";
 import { join } from "path";
-import { workerHome, workerTaskPath, getWorkerIds } from "../lib/paths.ts";
-import { readTask, writeTask, isProcessRunning, getWorkerStatus } from "../lib/task.ts";
+
+import { getWorkerIds, workerHome } from "../lib/paths.ts";
+import { getWorkerStatus, isProcessRunning, readTask, writeTask } from "../lib/task.ts";
 
 export function workerLabel(id: string): string {
   return `worker:${id}`;
@@ -10,7 +11,7 @@ export function workerLabel(id: string): string {
 
 export async function findIdleWorker(): Promise<string | null> {
   const ids = await getWorkerIds();
-  const workerIds = ids.filter(id => id !== "vilicus" && id !== "dispensator");
+  const workerIds = ids.filter((id) => id !== "vilicus" && id !== "dispensator");
 
   for (const id of workerIds) {
     const { status } = await getWorkerStatus(id);
@@ -30,14 +31,19 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString().trim();
 }
 
-export async function dispatch(id: string, repo: string, issue?: number, prompt?: string, options?: { silent?: boolean; skipStdin?: boolean }): Promise<boolean> {
+export async function dispatch(
+  id: string,
+  repo: string,
+  issue?: number,
+  prompt?: string,
+  options?: { silent?: boolean; skipStdin?: boolean }
+): Promise<boolean> {
   const home = workerHome(id);
 
   // Verify worker exists
   try {
     await readdir(home);
-  }
-  catch {
+  } catch {
     if (!options?.silent) {
       console.error(`Error: worker ${id} does not exist`);
       console.error(`Run: claude-workers init ${id}`);
@@ -60,7 +66,9 @@ export async function dispatch(id: string, repo: string, issue?: number, prompt?
     // Stale task - warn but proceed
     if (!options?.silent) {
       console.warn(`Warning: worker ${id} has stale task from crashed run`);
-      console.warn(`  Previous: ${existingTask.repo}${existingTask.issue ? "#" + existingTask.issue : ""}`);
+      console.warn(
+        `  Previous: ${existingTask.repo}${existingTask.issue ? "#" + existingTask.issue : ""}`
+      );
       console.warn(`  Overwriting with new assignment`);
     }
   }
@@ -78,7 +86,9 @@ export async function dispatch(id: string, repo: string, issue?: number, prompt?
     console.log(`  Issue: #${issue}`);
   }
   if (taskPrompt) {
-    console.log(`  Prompt: ${taskPrompt.length > 60 ? taskPrompt.slice(0, 60) + "..." : taskPrompt}`);
+    console.log(
+      `  Prompt: ${taskPrompt.length > 60 ? taskPrompt.slice(0, 60) + "..." : taskPrompt}`
+    );
   }
 
   // Add labels only if there's an issue
@@ -87,16 +97,25 @@ export async function dispatch(id: string, repo: string, issue?: number, prompt?
     spawnSync("gh", ["label", "create", label, "--repo", repo, "--color", "0E8A16", "--force"], {
       encoding: "utf-8",
     });
-    spawnSync("gh", ["label", "create", "pull-request", "--repo", repo, "--color", "1D76DB", "--force"], {
-      encoding: "utf-8",
-    });
-    const labelResult = spawnSync("gh", ["issue", "edit", String(issue), "--repo", repo, "--add-label", label], {
-      encoding: "utf-8",
-    });
+    spawnSync(
+      "gh",
+      ["label", "create", "pull-request", "--repo", repo, "--color", "1D76DB", "--force"],
+      {
+        encoding: "utf-8",
+      }
+    );
+    const labelResult = spawnSync(
+      "gh",
+      ["issue", "edit", String(issue), "--repo", repo, "--add-label", label],
+      {
+        encoding: "utf-8",
+      }
+    );
     if (labelResult.status !== 0) {
-      console.warn(`  Warning: failed to add label: ${labelResult.stderr?.trim() || "unknown error"}`);
-    }
-    else {
+      console.warn(
+        `  Warning: failed to add label: ${labelResult.stderr?.trim() || "unknown error"}`
+      );
+    } else {
       console.log(`  Added label: ${label}`);
     }
   }
@@ -104,7 +123,8 @@ export async function dispatch(id: string, repo: string, issue?: number, prompt?
   // Spawn claude in background with worker's HOME
   const logPath = join(home, "worker.log");
   const logFile = await open(logPath, "w");
-  const startPrompt = "Read ~/task.json and execute the task following your CLAUDE.md instructions.";
+  const startPrompt =
+    "Read ~/task.json and execute the task following your CLAUDE.md instructions.";
   const child = spawn("claude", ["--print", "--dangerously-skip-permissions", startPrompt], {
     cwd: home,
     env: {

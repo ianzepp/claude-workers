@@ -10,13 +10,22 @@ interface PullRequest {
 
 function getPendingPRs(): PullRequest[] {
   // Search for open PRs with pull-request label in user's repos
-  const result = spawnSync("gh", [
-    "search", "prs",
-    "--label", "pull-request",
-    "--state", "open",
-    "--owner", "@me",
-    "--json", "number,repository,title",
-  ], { encoding: "utf-8" });
+  const result = spawnSync(
+    "gh",
+    [
+      "search",
+      "prs",
+      "--label",
+      "pull-request",
+      "--state",
+      "open",
+      "--owner",
+      "@me",
+      "--json",
+      "number,repository,title",
+    ],
+    { encoding: "utf-8" }
+  );
 
   if (result.status !== 0) {
     console.error("Error querying PRs:", result.stderr);
@@ -25,8 +34,7 @@ function getPendingPRs(): PullRequest[] {
 
   try {
     return JSON.parse(result.stdout) as PullRequest[];
-  }
-  catch {
+  } catch {
     return [];
   }
 }
@@ -63,5 +71,7 @@ export async function poll(): Promise<void> {
   console.log(`  Title: ${pr.title}`);
 
   // Dispatch vilicus - use PR number as "issue" field
-  await dispatch("vilicus", repo, pr.number, `Review PR #${pr.number}: ${pr.title}`, { skipStdin: true });
+  await dispatch("vilicus", repo, pr.number, `Review PR #${pr.number}: ${pr.title}`, {
+    skipStdin: true,
+  });
 }

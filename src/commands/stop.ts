@@ -31,7 +31,7 @@ export async function stop(id: string): Promise<void> {
     console.log(`  Sent SIGTERM`);
 
     // Give it a moment to terminate gracefully
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     if (isProcessRunning(task.pid)) {
       console.log(`  Still running, sending SIGKILL`);
@@ -40,8 +40,7 @@ export async function stop(id: string): Promise<void> {
 
     console.log(`Worker ${id} stopped`);
     console.log(`Task remains in place — use 'restart' to resume or manually remove task.json`);
-  }
-  catch (err) {
+  } catch (err) {
     console.error(`Error killing process: ${err}`);
     process.exit(1);
   }
