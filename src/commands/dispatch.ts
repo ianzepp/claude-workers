@@ -5,6 +5,13 @@ import { join } from "path";
 import { getWorkerIds, workerHome } from "../lib/paths.ts";
 import { getWorkerStatus, isProcessRunning, readTask, writeTask } from "../lib/task.ts";
 
+const MODEL_MAP: Record<string, string> = {
+  sonnet: "claude-sonnet-4-20250514",
+  opus: "claude-opus-4-5-20251101",
+};
+
+const DEFAULT_MODEL = "sonnet";
+
 export function workerLabel(id: string): string {
   return `worker:${id}`;
 }
@@ -36,7 +43,7 @@ export async function dispatch(
   repo: string,
   issue?: number,
   prompt?: string,
-  options?: { silent?: boolean; skipStdin?: boolean }
+  options?: { silent?: boolean; skipStdin?: boolean; model?: string }
 ): Promise<boolean> {
   const home = workerHome(id);
 
@@ -91,19 +98,12 @@ export async function dispatch(
     );
   }
 
-  // Add labels only if there's an issue
+  // Add worker label to issue for tracking
   if (issue) {
     const label = workerLabel(id);
     spawnSync("gh", ["label", "create", label, "--repo", repo, "--color", "0E8A16", "--force"], {
       encoding: "utf-8",
     });
-    spawnSync(
-      "gh",
-      ["label", "create", "pull-request", "--repo", repo, "--color", "1D76DB", "--force"],
-      {
-        encoding: "utf-8",
-      }
-    );
     const labelResult = spawnSync(
       "gh",
       ["issue", "edit", String(issue), "--repo", repo, "--add-label", label],
@@ -123,17 +123,24 @@ export async function dispatch(
   // Spawn claude in background with worker's HOME
   const logPath = join(home, "worker.log");
   const logFile = await open(logPath, "w");
+  const modelName = options?.model ?? DEFAULT_MODEL;
+  const modelId = MODEL_MAP[modelName] ?? modelName;
   const startPrompt =
     "Read ~/task.json and execute the task following your CLAUDE.md instructions.";
-  const child = spawn("claude", ["--print", "--dangerously-skip-permissions", startPrompt], {
-    cwd: home,
-    env: {
-      ...process.env,
-      HOME: home,
-    },
-    detached: true,
-    stdio: ["ignore", logFile.fd, logFile.fd],
-  });
+  console.log(`  Model: ${modelName}`);
+  const child = spawn(
+    "claude",
+    ["--model", modelId, "--print", "--dangerously-skip-permissions", startPrompt],
+    {
+      cwd: home,
+      env: {
+        ...process.env,
+        HOME: home,
+      },
+      detached: true,
+      stdio: ["ignore", logFile.fd, logFile.fd],
+    }
+  );
 
   child.unref();
 

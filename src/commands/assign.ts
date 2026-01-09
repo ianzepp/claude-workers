@@ -10,8 +10,7 @@ interface Issue {
   repository: { nameWithOwner: string };
 }
 
-function getApprovedIssues(): Issue[] {
-  // Only pick up issues explicitly approved for auto-assignment
+function getOpenIssues(): Issue[] {
   const result = spawnSync(
     "gh",
     [
@@ -19,8 +18,6 @@ function getApprovedIssues(): Issue[] {
       "issues",
       "--state",
       "open",
-      "--label",
-      "approved",
       "--owner",
       "@me",
       "--json",
@@ -41,9 +38,8 @@ function getApprovedIssues(): Issue[] {
     return issues.filter((issue) => {
       const labelNames = issue.labels.map((l) => l.name);
       const hasWorkerLabel = labelNames.some((l) => l.startsWith("worker:"));
-      const hasPRLabel = labelNames.includes("pull-request");
       const hasBlockedLabel = labelNames.includes("blocked");
-      return !hasWorkerLabel && !hasPRLabel && !hasBlockedLabel;
+      return !hasWorkerLabel && !hasBlockedLabel;
     });
   } catch {
     return [];
@@ -56,8 +52,8 @@ const MIN_IDLE_WORKERS = 2;
 async function findIdleWorker(): Promise<string | null> {
   const ids = await getWorkerIds();
 
-  // Skip special-purpose agents that handle specific tasks
-  const workerIds = ids.filter((id) => id !== "vilicus" && id !== "dispensator");
+  // Skip special-purpose agents
+  const workerIds = ids.filter((id) => id !== "dispensator");
 
   const idleWorkers: string[] = [];
   for (const id of workerIds) {
@@ -76,14 +72,14 @@ async function findIdleWorker(): Promise<string | null> {
 }
 
 export async function assign(): Promise<void> {
-  const issues = getApprovedIssues();
+  const issues = getOpenIssues();
 
   if (issues.length === 0) {
-    console.log("No approved issues found");
+    console.log("No open issues found");
     return;
   }
 
-  console.log(`${issues.length} approved issue(s) found`);
+  console.log(`${issues.length} open issue(s) found`);
 
   // Try to dispatch, with retry if worker becomes busy
   const MAX_RETRIES = 3;

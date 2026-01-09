@@ -1,8 +1,10 @@
+import { spawnSync } from "child_process";
 import { rename, unlink } from "fs/promises";
 import { join } from "path";
 
 import { workerCompletedDir, workerTaskPath } from "../lib/paths.ts";
 import { isProcessRunning, readTask } from "../lib/task.ts";
+import { workerLabel } from "./dispatch.ts";
 
 export async function reset(id: string, options?: { force?: boolean }): Promise<void> {
   const task = await readTask(id);
@@ -44,10 +46,24 @@ export async function reset(id: string, options?: { force?: boolean }): Promise<
   try {
     await rename(taskPath, archivePath);
     console.log(`  Archived to: ${archivePath}`);
-  } catch {
+  }
+  catch {
     // If rename fails (cross-device?), just delete
     await unlink(taskPath);
     console.log(`  Removed task.json`);
+  }
+
+  // Remove worker label from issue if one was assigned
+  if (task.issue) {
+    const label = workerLabel(id);
+    const result = spawnSync(
+      "gh",
+      ["issue", "edit", String(task.issue), "--repo", task.repo, "--remove-label", label],
+      { encoding: "utf-8" }
+    );
+    if (result.status === 0) {
+      console.log(`  Removed label: ${label}`);
+    }
   }
 
   console.log(`Worker ${id} is now idle`);

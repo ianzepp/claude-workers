@@ -12,7 +12,6 @@ import { watch } from "./commands/watch.ts";
 import { todos } from "./commands/todos.ts";
 import { update } from "./commands/update.ts";
 import { history } from "./commands/history.ts";
-import { poll } from "./commands/poll.ts";
 import { assign } from "./commands/assign.ts";
 
 const USAGE = `
@@ -20,7 +19,7 @@ claude-workers - Orchestration for autonomous Claude Code agents
 
 Usage:
   claude-workers init <id>                                    Create worker from template
-  claude-workers dispatch -r <repo> [-i issue] [-w worker] [-p prompt]
+  claude-workers dispatch -r <repo> [-i issue] [-w worker] [-p prompt] [-m model]
   claude-workers restart <id>                                 Restart crashed worker
   claude-workers reset <id> [--force]                         Clear task and return to idle
   claude-workers stop <id>                                    Stop running worker
@@ -31,16 +30,18 @@ Usage:
   claude-workers watch <id>                                   Poll until worker finishes
   claude-workers update                                       Pull latest and refresh all workers
   claude-workers history [id]                                 Show completed tasks
-  claude-workers poll                                         Check for PRs and dispatch vilicus
-  claude-workers assign                                       Assign unassigned issues to idle workers
+  claude-workers assign                                       Assign open issues to idle workers
+
+Options:
+  -m, --model <model>   Model to use: sonnet (default) or opus
 
 Dispatch reads prompt from stdin if not provided as argument (EOF = no prompt).
 
 Examples:
   claude-workers init 01
-  claude-workers dispatch 01 ianzepp/faber-romanus 22
-  claude-workers dispatch 01 ianzepp/faber-romanus 22 "Investigate only"
-  echo "Fix the bug" | claude-workers dispatch 01 ianzepp/faber-romanus 22
+  claude-workers dispatch -r ianzepp/faber-romanus -i 22
+  claude-workers dispatch -r ianzepp/faber-romanus -i 22 -m opus
+  claude-workers dispatch -r ianzepp/faber-romanus -i 22 -p "Investigate only"
   claude-workers status
 `.trim();
 
@@ -70,6 +71,7 @@ async function main() {
       let issue: number | undefined;
       let workerId: string | undefined;
       let prompt: string | undefined;
+      let model: string | undefined;
 
       for (let i = 0; i < args.length; i++) {
         const arg = args[i];
@@ -78,14 +80,21 @@ async function main() {
         if ((arg === "-r" || arg === "--repo") && next) {
           repo = next;
           i++;
-        } else if ((arg === "-i" || arg === "--issue") && next) {
+        }
+        else if ((arg === "-i" || arg === "--issue") && next) {
           issue = parseInt(next, 10);
           i++;
-        } else if ((arg === "-w" || arg === "--worker") && next) {
+        }
+        else if ((arg === "-w" || arg === "--worker") && next) {
           workerId = next;
           i++;
-        } else if ((arg === "-p" || arg === "--prompt") && next) {
+        }
+        else if ((arg === "-p" || arg === "--prompt") && next) {
           prompt = next;
+          i++;
+        }
+        else if ((arg === "-m" || arg === "--model") && next) {
+          model = next;
           i++;
         }
       }
@@ -93,7 +102,7 @@ async function main() {
       if (!repo) {
         console.error("Error: repo required");
         console.error(
-          "Usage: claude-workers dispatch -r <repo> [-i issue] [-w worker] [-p prompt]"
+          "Usage: claude-workers dispatch -r <repo> [-i issue] [-w worker] [-p prompt] [-m model]"
         );
         process.exit(1);
       }
@@ -102,7 +111,8 @@ async function main() {
       let id: string;
       if (workerId) {
         id = workerId;
-      } else {
+      }
+      else {
         const foundId = await findIdleWorker();
         if (!foundId) {
           console.error("Error: no idle workers available");
@@ -111,7 +121,7 @@ async function main() {
         id = foundId;
       }
 
-      const success = await dispatch(id, repo, issue, prompt);
+      const success = await dispatch(id, repo, issue, prompt, { model });
       if (!success) {
         process.exit(1);
       }
@@ -206,11 +216,6 @@ async function main() {
     case "history": {
       const [id] = args;
       await history(id);
-      break;
-    }
-
-    case "poll": {
-      await poll();
       break;
     }
 

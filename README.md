@@ -9,7 +9,6 @@ Orchestration system for running multiple autonomous Claude Code agents without 
 Running multiple Claude agents autonomously on GitHub issues requires:
 - Git branch isolation (agents can't step on each other)
 - Coordination (don't double-assign issues)
-- Quality control (what happens when an agent produces garbage?)
 
 ### Solution: Sandboxed Worker Identities
 
@@ -28,8 +27,6 @@ Each worker is a fully isolated Claude "home" environment, not just a project cl
       faber-romanus/    # Cloned on demand
       other-repo/
 ~/workers/02/
-  ...
-~/workers/vilicus/      # PR review agent
   ...
 ```
 
@@ -52,7 +49,6 @@ Worker `settings.json`:
 
 ```json
 {
-  "model": "claude-opus-4-5-20250929",
   "sandbox": {
     "enabled": true
   },
@@ -82,8 +78,9 @@ Worker `settings.json`:
 
 ```bash
 claude-workers init <id>                                    # Create worker from template
-claude-workers dispatch -r <repo> [-i issue] [-w worker] [-p prompt]
+claude-workers dispatch -r <repo> [-i issue] [-w worker] [-p prompt] [-m model]
 claude-workers restart <id>                                 # Restart crashed worker
+claude-workers reset <id> [--force]                         # Clear task and return to idle
 claude-workers stop <id>                                    # Stop running worker
 claude-workers status [id]                                  # Show worker status
 claude-workers inspect <id> [lines]                         # Show recent conversation activity
@@ -92,8 +89,7 @@ claude-workers history [id]                                 # Show completed tas
 claude-workers refresh <id>                                 # Re-copy credentials and templates
 claude-workers watch <id>                                   # Poll until worker finishes
 claude-workers update                                       # Pull latest and refresh all workers
-claude-workers poll                                         # Check for PRs and dispatch vilicus
-claude-workers assign                                       # Assign unassigned issues to idle workers
+claude-workers assign                                       # Assign open issues to idle workers
 ```
 
 ### Dispatch
@@ -101,14 +97,17 @@ claude-workers assign                                       # Assign unassigned 
 `dispatch` is fire-and-forget:
 1. Writes `task.json` with assignment
 2. Creates `worker:NN` label on the issue (if issue provided)
-3. Spawns worker process
+3. Spawns worker process with specified model
 4. Returns immediately
 
 The orchestrating Claude (or human) moves on; the PR appears eventually.
 
 ```bash
-# Fix an issue (auto-selects idle worker)
+# Fix an issue (auto-selects idle worker, uses sonnet by default)
 claude-workers dispatch -r ianzepp/faber-romanus -i 22
+
+# Use opus for complex issues
+claude-workers dispatch -r ianzepp/faber-romanus -i 22 -m opus
 
 # Specify worker
 claude-workers dispatch -r ianzepp/faber-romanus -i 22 -w 01
@@ -119,6 +118,15 @@ claude-workers dispatch -r ianzepp/faber-romanus -i 22 -p "Investigate and comme
 # Task without issue
 claude-workers dispatch -r ianzepp/faber-romanus -p "Clone and set up the repo"
 ```
+
+### Model Selection
+
+Workers default to Sonnet for speed and cost efficiency. Use `-m opus` for complex issues requiring more reasoning:
+
+| Model | Flag | Best for |
+|-------|------|----------|
+| Sonnet | `-m sonnet` (default) | Well-scoped issues, straightforward implementations |
+| Opus | `-m opus` | Architectural decisions, ambiguous requirements |
 
 ### Watch
 
@@ -145,94 +153,71 @@ claude-workers history        # All workers
 claude-workers history 01     # Specific worker
 ```
 
-### Poll
-
-`poll` checks for PRs needing review and dispatches vilicus:
-
-```bash
-claude-workers poll           # Run once
-*/5 * * * * cw poll           # Cron every 5 mins
-```
-
 ### Assign
 
-`assign` (dispensator) finds unassigned issues and dispatches idle workers:
+`assign` finds open issues and dispatches idle workers:
 
 ```bash
 claude-workers assign         # Run once
 */5 * * * * cw assign         # Cron every 5 mins
 ```
 
-Issues are skipped if they have `worker:*`, `pull-request`, or `blocked` labels.
+Issues are skipped if they have `worker:*` or `blocked` labels.
 
-## Vilicus — Automated PR Review
+### Reset
 
-**Vilicus** (Latin: overseer) is a special worker that reviews PRs created by other workers.
-
-### Setup
+`reset` clears a crashed worker and removes its label from the issue:
 
 ```bash
-claude-workers init vilicus
+claude-workers reset 01       # Clear crashed task, remove worker:01 label
+claude-workers reset 01 -f    # Force reset even if running
 ```
 
-### Workflow
+## Workflow
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Worker creates PR → adds pull-request label                │
+│  Issue created                                               │
 └─────────────────────────────────────────────────────────────┘
                               ↓
-                    poll (every 5 min)
+                    assign (cron, every 5 min)
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│  vilicus reviews PR                                          │
-│  - Checks code against issue requirements                   │
-│  - Looks for previous rejection comments                    │
+│  Worker picks up issue                                       │
+│  - Adds worker:NN label                                      │
+│  - Clones repo, creates branch                               │
+│  - Implements fix                                            │
+│  - Opens PR                                                  │
 └─────────────────────────────────────────────────────────────┘
                               ↓
-              ┌───────────────┼───────────────┐
-              ↓               ↓               ↓
-          APPROVE        REJECT (1st)     BLOCK (2nd)
-              ↓               ↓               ↓
-          • Merge PR      • Comment        • Close PR
-          • Close issue   • needs-work     • blocked label
-          • Done          • Dispatch       • Human needed
-                            worker
-                              ↓
-                          Worker fixes
-                              ↓
-                          pull-request
-                              ↓
-                          Back to poll
+┌─────────────────────────────────────────────────────────────┐
+│  Human reviews PRs                                           │
+│  - Batch review with Claude assistance                       │
+│  - Approve/reject each PR                                    │
+│  - Merge approved PRs                                        │
+└─────────────────────────────────────────────────────────────┘
 ```
-
-### Two-Strike Rule
-
-- **First rejection**: vilicus comments with feedback, adds `needs-work` label, dispatches a worker to fix
-- **Second rejection**: vilicus blocks the PR, closes it, labels issue as `blocked` for human intervention
 
 ### Labels
 
 | Label | Meaning |
 |-------|---------|
 | `worker:NN` | Issue claimed by worker NN |
-| `pull-request` | PR ready for vilicus review |
-| `needs-work` | PR rejected, worker fixing |
-| `blocked` | Failed twice, needs human |
+| `blocked` | Needs human intervention |
 
 ## Task Lifecycle
 
 1. **Dispatch**: CLI writes `~/workers/NN/task.json` and labels issue with `worker:NN`
 
-2. **Work**: Worker clones repo (if needed), creates branch `wNN/issue-XX`, reads project's `AGENTS.md`/`CLAUDE.md`, fetches issue, works on it.
+2. **Work**: Worker clones repo (if needed), creates branch `issue-<number>`, reads project's `AGENTS.md`/`CLAUDE.md`, fetches issue, works on it.
 
 3. **Complete**:
-   - Success: push branch, open PR, add `pull-request` label, remove `worker:NN` label
+   - Success: push branch, open PR, remove `worker:NN` label
    - Failure: comment on issue, leave `worker:NN` label for visibility
 
-4. **Review**: vilicus reviews PR, merges or rejects
+4. **Archive**: Move `task.json` to `completed/<owner>-<repo>-<issue>.json`
 
-5. **Archive**: Move `task.json` to `completed/<owner>-<repo>-<issue>.json`
+5. **Review**: Human reviews PR (with Claude assistance), merges or closes
 
 ### Worker Availability
 
@@ -244,7 +229,15 @@ claude-workers init vilicus
 
 ### Recovery
 
-If a worker crashes mid-task, `task.json` remains with the assignment but a stale PID. Re-dispatch to retry.
+If a worker crashes mid-task:
+
+```bash
+claude-workers status         # See crashed state
+claude-workers reset 01       # Clear task, remove label from issue
+claude-workers dispatch ...   # Re-dispatch if needed
+```
+
+The `reset` command automatically removes the `worker:NN` label from the issue, making it available for re-assignment.
 
 ## Remote Workers (VPS)
 
@@ -321,14 +314,13 @@ chmod +x /usr/local/bin/cw
 ```bash
 cw init 01
 cw init 02
-cw init vilicus
 ```
 
-**8. Set up cron for automated review:**
+**8. Set up cron for auto-assignment:**
 
 ```bash
 crontab -e
-# Add: */5 * * * * /usr/local/bin/cw poll >> /home/worker/poll.log 2>&1
+# Add: */5 * * * * /usr/local/bin/cw assign >> /home/worker/assign.log 2>&1
 ```
 
 ### Usage
@@ -338,9 +330,8 @@ From your laptop:
 ```bash
 alias cw='ssh worker@your-vps cw'
 cw status
-cw dispatch 01 owner/repo 42
+cw dispatch -r owner/repo -i 42
 cw history
-cw poll
 ```
 
 ## Project Structure
@@ -351,11 +342,6 @@ claude-workers/
     claude-workers          # CLI entrypoint (built)
   templates/
     worker/                 # Standard worker template
-      .claude/
-        CLAUDE.md
-        settings.json
-      .zshenv
-    vilicus/                # PR review agent template
       .claude/
         CLAUDE.md
         settings.json
@@ -371,7 +357,8 @@ claude-workers/
       refresh.ts
       watch.ts
       update.ts
-      poll.ts
+      assign.ts
+      reset.ts
     lib/
       paths.ts
       task.ts
@@ -390,11 +377,10 @@ bun run build
 # Create workers
 claude-workers init 01
 claude-workers init 02
-claude-workers init vilicus
 
 # Dispatch tasks
 claude-workers dispatch -r myorg/myrepo -i 42
-claude-workers dispatch -r myorg/myrepo -i 43
+claude-workers dispatch -r myorg/myrepo -i 43 -m opus
 
 # Monitor
 claude-workers status

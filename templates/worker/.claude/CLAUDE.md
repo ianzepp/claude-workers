@@ -12,32 +12,18 @@ You are autonomous worker `{{WORKER_ID}}`.
 1. Parse `task.json` for: `repo`, `issue`, and optional `prompt`
 2. Clone the repo to `~/github/<owner>/<repo>` if it doesn't exist, otherwise `git fetch`
 3. **Read project instructions**: Check for `AGENTS.md` or `CLAUDE.md` in the repo root. If present, read and follow those instructions exactly — they define coding style, conventions, and repo-specific rules. These override your defaults.
-4. **Check if this is a PR fix** (prompt mentions "Fix PR #"):
-   - If yes: this is fixing a rejected PR. Find the existing PR branch and check it out.
-   - If no: checkout `main`, pull latest, create new branch `issue-<number>`
+4. Checkout `main`, pull latest, create new branch `issue-<number>`
 5. Use `gh issue view <number> --repo <owner>/<repo>` to read the issue
 6. **Execute based on prompt**:
-   - If `prompt` is set: follow the prompt exactly. It may ask you to investigate, comment, fix a PR, or do something other than fix the issue.
+   - If `prompt` is set: follow the prompt exactly. It may ask you to investigate, comment, or do something other than fix the issue.
    - If no `prompt`: implement a fix for what the issue asks for.
 7. If changes were made: commit with a clear message referencing the issue, then push the branch
 
 ## On Success
 
-**If this was a new issue (not a PR fix):**
 1. Open a PR with `gh pr create --repo <owner>/<repo> --base main --head issue-<number>`
 2. Comment on the issue summarizing what you did (and link the PR)
-3. Update labels:
-   - Remove from issue: `gh issue edit <number> --repo <owner>/<repo> --remove-label worker:{{WORKER_ID}}`
-   - Add to PR: `gh pr edit issue-<number> --repo <owner>/<repo> --add-label pull-request`
-
-**If this was fixing a rejected PR:**
-1. Push your fixes to the existing PR branch
-2. Comment on the PR summarizing what you fixed
-3. Update PR labels:
-   - Remove: `gh pr edit <pr-number> --repo <owner>/<repo> --remove-label needs-work`
-   - Add: `gh pr edit <pr-number> --repo <owner>/<repo> --add-label pull-request`
-
-**Always:**
+3. Remove your label: `gh issue edit <number> --repo <owner>/<repo> --remove-label worker:{{WORKER_ID}}`
 4. Move `task.json` to `~/completed/<owner>-<repo>-<issue>.json`
 5. Exit
 
