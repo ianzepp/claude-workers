@@ -95,7 +95,8 @@ export async function assign(): Promise<void> {
     console.log(`  ${repo}#${issue.number}: ${issue.title}`);
 
     // Try to dispatch with silent mode (retries if worker became busy)
-    const success = await dispatch(workerId, repo, issue.number, undefined, { silent: attempt > 0 });
+    // RACE FIX: skipStdin prevents hanging when running over SSH (stdin stays open)
+    const success = await dispatch(workerId, repo, issue.number, undefined, { silent: attempt > 0, skipStdin: true });
 
     if (success) {
       return;

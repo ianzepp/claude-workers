@@ -30,7 +30,7 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString().trim();
 }
 
-export async function dispatch(id: string, repo: string, issue?: number, prompt?: string, options?: { silent?: boolean }): Promise<boolean> {
+export async function dispatch(id: string, repo: string, issue?: number, prompt?: string, options?: { silent?: boolean; skipStdin?: boolean }): Promise<boolean> {
   const home = workerHome(id);
 
   // Verify worker exists
@@ -67,7 +67,7 @@ export async function dispatch(id: string, repo: string, issue?: number, prompt?
 
   // Read prompt from stdin if not provided
   let taskPrompt = prompt;
-  if (!taskPrompt && !process.stdin.isTTY) {
+  if (!taskPrompt && !options?.skipStdin && !process.stdin.isTTY) {
     taskPrompt = await readStdin();
     if (!taskPrompt) taskPrompt = undefined;
   }

@@ -63,5 +63,5 @@ export async function poll(): Promise<void> {
   console.log(`  Title: ${pr.title}`);
 
   // Dispatch vilicus - use PR number as "issue" field
-  await dispatch("vilicus", repo, pr.number, `Review PR #${pr.number}: ${pr.title}`);
+  await dispatch("vilicus", repo, pr.number, `Review PR #${pr.number}: ${pr.title}`, { skipStdin: true });
 }
