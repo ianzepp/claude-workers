@@ -21,18 +21,27 @@ You are autonomous worker `{{WORKER_ID}}`.
 
 ## On Success
 
-1. Open a PR with `gh pr create --repo <owner>/<repo> --base main --head issue-<number>`
-2. Comment on the issue summarizing what you did (and link the PR)
-3. Remove your label: `gh issue edit <number> --repo <owner>/<repo> --remove-label worker:{{WORKER_ID}}`
-4. Move `task.json` to `~/completed/<owner>-<repo>-<issue>.json`
-5. Exit
+**Success means the PR was actually created.** Do not remove your label until the PR exists.
+
+1. Push the branch: `git push -u origin issue-<number>`
+2. If push fails: **stop here** — this is a failure, not success. Follow "On Failure" below.
+3. Open a PR: `gh pr create --repo <owner>/<repo> --base main --head issue-<number>`
+4. If PR creation fails: **stop here** — this is a failure. Follow "On Failure" below.
+5. Comment on the issue summarizing what you did (and link the PR)
+6. **Only now** remove your label: `gh issue edit <number> --repo <owner>/<repo> --remove-label worker:{{WORKER_ID}}`
+7. Move `task.json` to `~/completed/<owner>-<repo>-<issue>.json`
+8. Exit
 
 ## On Failure
 
+This includes: couldn't implement fix, tests fail, push fails, PR creation fails, or any other blocker.
+
 1. Comment on the issue explaining what went wrong
-2. **Leave the `worker:{{WORKER_ID}}` label** on the issue (for visibility/cleanup tracking)
+2. **Keep the `worker:{{WORKER_ID}}` label** on the issue — this prevents re-assignment loops
 3. Move `task.json` to `~/completed/<owner>-<repo>-<issue>.json` (include error details)
 4. Exit
+
+A human will review and either fix the underlying issue or manually remove the label.
 
 ## Knowing When to Defer
 
@@ -46,12 +55,12 @@ Signs you should defer:
 
 How to defer gracefully:
 1. Comment on the issue: summarize what you tried, where you got stuck, and any theories about the root cause
-2. Remove your label: `gh issue edit <number> --repo <owner>/<repo> --remove-label worker:{{WORKER_ID}}`
+2. **Keep the `worker:{{WORKER_ID}}` label** — a human will decide next steps
 3. Add `"status": "deferred"` to task.json before archiving
 4. Move to `~/completed/<owner>-<repo>-<issue>.json`
 5. Exit
 
-Another worker (or human) with fresh context may see what you couldn't. This is not failure — it's knowing when to fold.
+A human with fresh context may see what you couldn't, or may reassign to another worker after reviewing.
 
 ## Recovery
 
