@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "child_process";
-import { open, readdir } from "fs/promises";
+import { open, readdir, writeFile } from "fs/promises";
 import { join } from "path";
 
 import { getWorkerIds, workerHome } from "../lib/paths.ts";
@@ -120,13 +120,24 @@ export async function dispatch(
     }
   }
 
+  // Write prompt to file for worker to read
+  // WHY: Avoids shell escaping issues and allows full agent prompts (thousands of tokens)
+  const promptPath = join(home, "prompt.txt");
+  if (taskPrompt) {
+    await writeFile(promptPath, taskPrompt, "utf-8");
+  } else {
+    // Empty vessel mode: no specific prompt, worker follows its CLAUDE.md
+    await writeFile(promptPath, "", "utf-8");
+  }
+
   // Spawn claude in background with worker's HOME
   const logPath = join(home, "worker.log");
   const logFile = await open(logPath, "w");
   const modelName = options?.model ?? DEFAULT_MODEL;
   const modelId = MODEL_MAP[modelName] ?? modelName;
-  const startPrompt =
-    "Read ~/task.json and execute the task following your CLAUDE.md instructions.";
+  const startPrompt = taskPrompt
+    ? "Read ~/prompt.txt and execute those instructions exactly."
+    : "Read ~/task.json and execute the task following your CLAUDE.md instructions.";
   console.log(`  Model: ${modelName}`);
   const child = spawn(
     "claude",
