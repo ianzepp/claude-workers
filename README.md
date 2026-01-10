@@ -84,6 +84,7 @@ claude-workers reset <id> [--force]                         # Clear task and ret
 claude-workers stop <id>                                    # Stop running worker
 claude-workers status [id]                                  # Show worker status
 claude-workers inspect <id> [lines]                         # Show recent conversation activity
+claude-workers logs <id>                                    # Show full worker log output
 claude-workers todos [id]                                   # Show worker todo lists
 claude-workers history [id]                                 # Show completed tasks
 claude-workers refresh <id>                                 # Re-copy credentials and templates
@@ -172,6 +173,44 @@ Issues are skipped if they have `worker:*` or `blocked` labels.
 claude-workers reset 01       # Clear crashed task, remove worker:01 label
 claude-workers reset 01 -f    # Force reset even if running
 ```
+
+### Agent Integration
+
+Workers support running specialized agents from [claude-agents](https://github.com/ianzepp/claude-agents) for diagnostic and exploration tasks.
+
+**How it works:**
+1. Agent prompt is piped through stdin to `dispatch`
+2. Prompt is written to `~/workers/{id}/prompt.txt`
+3. Worker reads `prompt.txt` via bash (on startup)
+4. Worker executes agent instructions in the repo context
+5. Worker outputs findings and exits
+
+**Example with diogenes (free-spirit explorer):**
+
+```bash
+cd ~/github/owner/repo
+agent diogenes --dispatch --mode issue "explore and suggest improvements"
+```
+
+This dispatches the full diogenes agent prompt to a remote worker. The worker:
+- Clones the repo
+- Reads the agent prompt from `prompt.txt`
+- Explores the codebase following agent instructions
+- Creates GitHub issues for findings (in `--mode issue`)
+
+**View full output:**
+
+```bash
+claude-workers logs 01        # Full conversation log
+claude-workers inspect 01 50  # Recent activity (last 50 lines)
+```
+
+**Supported workflows:**
+- **read mode**: Agent analyzes and outputs report
+- **update mode**: Agent makes changes and commits
+- **issue mode**: Agent creates GitHub issues for findings
+
+See [claude-agents](https://github.com/ianzepp/claude-agents) for available agents (augur, columbo, galen, titus, cato, diogenes).
 
 ## Workflow
 
