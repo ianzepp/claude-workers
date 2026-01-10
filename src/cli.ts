@@ -25,7 +25,7 @@ Usage:
   claude-workers reset <id> [--force]                         Clear task and return to idle
   claude-workers stop <id>                                    Stop running worker
   claude-workers status [id]                                  Show worker status
-  claude-workers inspect <id> [lines]                         Show recent conversation activity
+  claude-workers inspect <id> [lines] [-f]                    Show recent conversation activity
   claude-workers logs <id>                                    Show full worker log output
   claude-workers todos [id]                                   Show worker todo lists
   claude-workers refresh <id>                                 Re-copy credentials to worker
@@ -171,14 +171,28 @@ async function main() {
     }
 
     case "inspect": {
-      const [id, linesArg] = args;
-      if (!id) {
+      let workerId: string | undefined;
+      let lines = 30;
+      let follow = false;
+
+      for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        if (arg === "-f" || arg === "--follow") {
+          follow = true;
+        } else if (!workerId) {
+          workerId = arg;
+        } else if (!isNaN(parseInt(arg, 10))) {
+          lines = parseInt(arg, 10);
+        }
+      }
+
+      if (!workerId) {
         console.error("Error: worker id required");
-        console.error("Usage: claude-workers inspect <id> [lines]");
+        console.error("Usage: claude-workers inspect <id> [lines] [-f|--follow]");
         process.exit(1);
       }
-      const lines = linesArg ? parseInt(linesArg, 10) : 30;
-      await inspect(id, lines);
+
+      await inspect(workerId, lines, follow);
       break;
     }
 
