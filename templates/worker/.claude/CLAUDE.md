@@ -4,20 +4,25 @@ You are autonomous worker `{{WORKER_ID}}`.
 
 ## On Startup
 
-1. Read `~/task.json` to get your assignment (repo, issue, optional prompt)
+1. Read `task.json` to get your assignment (repo, issue, optional prompt)
+   - Use bash: `cat task.json` (Claude's Read tool doesn't respect worker HOME)
 2. Execute the task
 
 ## Task Execution
 
 1. Parse `task.json` for: `repo`, `issue`, and optional `prompt`
-2. Clone the repo to `~/github/<owner>/<repo>` if it doesn't exist, otherwise `git fetch`
-3. **Read project instructions**: Check for `AGENTS.md` or `CLAUDE.md` in the repo root. If present, read and follow those instructions exactly — they define coding style, conventions, and repo-specific rules. These override your defaults.
-4. Checkout `main`, pull latest, create new branch `issue-<number>`
-5. Use `gh issue view <number> --repo <owner>/<repo>` to read the issue
-6. **Execute based on prompt**:
-   - If `prompt` is set: follow the prompt exactly. It may ask you to investigate, comment, or do something other than fix the issue.
+2. Clone the repo to `github/<owner>/<repo>` if it doesn't exist, otherwise `cd github/<owner>/<repo> && git fetch`
+3. Checkout `main`, pull latest
+4. **Check for agent prompt**: Use bash to check for `prompt.txt`
+   - Run: `cat prompt.txt 2>/dev/null`
+   - If output exists and has content: **Follow those instructions exactly** in the repo context. The prompt contains your complete role, constraints, and goals. CD to the repo directory (`cd github/<owner>/<repo>`) and execute the prompt's instructions. When done, exit. (Skip steps 5-8)
+   - If no output or empty: Continue with issue-based workflow below (steps 5-8)
+5. **Read project instructions**: Check for `AGENTS.md` or `CLAUDE.md` in the repo root. If present, read and follow those instructions exactly — they define coding style, conventions, and repo-specific rules. These override your defaults.
+6. Create new branch `issue-<number>`, use `gh issue view <number> --repo <owner>/<repo>` to read the issue
+7. **Execute based on prompt**:
+   - If `prompt` field in task.json is set: follow the prompt exactly. It may ask you to investigate, comment, or do something other than fix the issue.
    - If no `prompt`: implement a fix for what the issue asks for.
-7. If changes were made: commit with a clear message referencing the issue, then push the branch
+8. If changes were made: commit with a clear message referencing the issue, then push the branch
 
 ## On Success
 

@@ -7,6 +7,7 @@ import { reset } from "./commands/reset.ts";
 import { stop } from "./commands/stop.ts";
 import { status } from "./commands/status.ts";
 import { inspect } from "./commands/inspect.ts";
+import { logs } from "./commands/logs.ts";
 import { refresh } from "./commands/refresh.ts";
 import { watch } from "./commands/watch.ts";
 import { todos } from "./commands/todos.ts";
@@ -25,6 +26,7 @@ Usage:
   claude-workers stop <id>                                    Stop running worker
   claude-workers status [id]                                  Show worker status
   claude-workers inspect <id> [lines]                         Show recent conversation activity
+  claude-workers logs <id>                                    Show full worker log output
   claude-workers todos [id]                                   Show worker todo lists
   claude-workers refresh <id>                                 Re-copy credentials to worker
   claude-workers watch <id>                                   Poll until worker finishes
@@ -177,6 +179,17 @@ async function main() {
       }
       const lines = linesArg ? parseInt(linesArg, 10) : 30;
       await inspect(id, lines);
+      break;
+    }
+
+    case "logs": {
+      const [id] = args;
+      if (!id) {
+        console.error("Error: worker id required");
+        console.error("Usage: claude-workers logs <id>");
+        process.exit(1);
+      }
+      await logs(id);
       break;
     }
 
