@@ -129,6 +129,31 @@ Workers default to Sonnet for speed and cost efficiency. Use `-m opus` for compl
 | Sonnet | `-m sonnet` (default) | Well-scoped issues, straightforward implementations |
 | Opus | `-m opus` | Architectural decisions, ambiguous requirements |
 
+### Inspect
+
+`inspect` shows recent worker activity (tool uses and text blocks):
+
+```bash
+claude-workers inspect 01        # Last 30 events
+claude-workers inspect 01 50     # Last 50 events
+claude-workers inspect 01 -f     # Follow mode (like tail -f)
+```
+
+**Follow mode** (`-f`) shows initial context then streams new events in real-time:
+
+```bash
+claude-workers inspect 01 -f
+# Following worker 01 (Ctrl+C to exit)...
+#
+# ◇ Reading the task.json file...
+# → Bash cat task.json
+# ◇ I see the assignment is to fix issue #42
+# → Read /path/to/repo/src/auth.ts
+# ...
+```
+
+Useful for monitoring long-running workers without repeatedly polling.
+
 ### Watch
 
 `watch` polls a worker until it finishes, then exits:
